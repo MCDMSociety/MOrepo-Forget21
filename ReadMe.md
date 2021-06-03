@@ -6,7 +6,7 @@ problems. Problem classes considered are PPP (Production Planning) and Uncapacit
 
 ## Test instances
 
-Instances are named `Forget20_[problemClass]_[n]_[p]_[rangeOfCosts]_[costGenerationMethod]_[constaintId]_[id].raw` where 
+Instances are named `Forget21_[problemClass]_[n]_[p]_[rangeOfCosts]_[costGenerationMethod]_[constaintId]_[id].raw` where 
 
    - `problemClass` is either PPP (Production Planning Problem), or UFLP (Uncapacitated Facility
       Location Problem).
