@@ -4,7 +4,7 @@ library(tidyverse)
 #library(knitr)
 
 # read from csv file
-datMain <- read.csv("results\\convert\\csv\\resultsMain.csv")
+datMain <- read.csv("results/convert/csv/resultsMain.csv")
 
 # add a column for problem class
 datMain <- datMain %>%

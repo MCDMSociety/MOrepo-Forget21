@@ -3,3 +3,6 @@
 .RData
 .Ruserdata
 .DS_Store
+*_files
+*_cache
+*fig_tab-tikzDictionary
