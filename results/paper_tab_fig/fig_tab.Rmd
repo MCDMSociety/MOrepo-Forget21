@@ -1,0 +1,472 @@
+---
+title: "Generation of figures and tables for the paper"
+description: 
+author:
+  - name: Lars Relund Nielsen
+    url: http://pure.au.dk/portal/en/larsrn@econ.au.dk
+    affiliation: CORAL, BSS, Aarhus University
+    affiliation_url: https://econ.au.dk/coral
+date: "`r Sys.Date()`"
+output:
+  distill::distill_article:
+    toc: true
+    toc_depth: 1
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r knitr setup, include = FALSE}
+library(knitr)
+library(kableExtra)
+library(formatR)
+# setupKnitr()
+# knitr::opts_chunk$set(
+#   collapse = TRUE,
+#   comment = "#>",
+#   fig.path = "ublb-",
+#   warning=FALSE, message=FALSE, include = TRUE, 
+#   out.width = "99%", fig.width = 8, fig.align = "center", fig.asp = 0.62
+# )
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  warning=FALSE, message=FALSE, include = TRUE, 
+  cache = TRUE, autodep = TRUE,
+  echo=F, results = "hide",
+  out.width = "99%", fig.width = 8, fig.align = "center", fig.asp = 0.7,
+  tidy.opts = list(width.cutoff = 80), tidy = F
+  # layout="l-page"   #"l-screen-inset"
+)
+options(knitr.kable.NA = '', knitr.table.format = "latex", width = 80)
+```
+
+```{r setup, include=FALSE}
+library(gMOIP)
+library(here)
+library(ggsci)
+library(tidyverse)
+library(tikzDevice)
+library(magrittr)
+library(RColorBrewer)
+library(wesanderson)
+library(ggthemes)
+library(rmarkdown)
+here::i_am(path = "results/paper_tab_fig/fig_tab.Rmd")
+pathOverLeaf <- "/Users/au15463/Dropbox/Apps/Overleaf/LP_relax_based_BB"
+copyTabFigs <- TRUE
+```
+
+```{r color scales, include=FALSE}
+# https://cran.r-project.org/web/packages/ggsci/vignettes/ggsci.html
+mypal <- pal_npg("nrc", alpha = 0.7)(9)
+mypal <- pal_simpsons()(9)
+# mypal
+library("scales")
+show_col(mypal)
+```
+
+```{r Define theme and color scales, include=FALSE}
+theme_publish <- function() {
+  library(grid)
+  library(ggthemes)
+  return(theme_foundation(base_size = 10) +
+    theme(
+      # plot.title = element_text(face = "bold", size = rel(1.2), hjust = 0.5),
+      text = element_text(face = "plain"),
+      # panel.background = element_rect(colour = NA),
+      panel.spacing = unit(0.5, "cm"),
+      plot.background = element_blank(),
+      # panel.border = element_rect(colour = NA),
+      axis.title = element_text(face = "plain",size = rel(1)),
+      # axis.title.y = element_text(angle=90,vjust =2),
+      # axis.title.x = element_text(vjust = -0.2),
+      axis.text = element_text(),
+      axis.line = element_line(colour="black"),
+      axis.ticks = element_line(),
+      panel.grid.major = element_line(colour="#f0f0f0"),
+      panel.grid.minor = element_blank(),
+      legend.key = element_rect(colour = NA),
+      legend.position = "bottom",
+      legend.direction = "horizontal",
+      # legend.key.size = unit(0.2, "cm"),
+      legend.key.height = unit(0.2, "cm"), 
+      legend.key.width = unit(0.75, "cm"),
+      # legend.margin = unit(0, "cm"),
+      # legend.title = element_blank(), #element_text(face="italic"),
+      # plot.margin=unit(c(10,5,5,5),"mm"),
+      # strip.background=element_rect(colour="#f0f0f0",fill="#f0f0f0"),
+      # strip.text = element_text(face="bold"),
+    )
+  )
+}
+```
+
+```{r load data}
+datInput <- read_csv(here("results", "paper_tab_fig", "instances.csv"))
+datResult <- read_csv(here("results", "convert", "csv", "resultsMain.csv")) %>% 
+  mutate(instance_name = str_remove(instance, "....$"),
+         class = str_replace(instance_name, "^.*?-(.*?)_(.*)", "\\1"),
+         alg_config = str_c("\\\\", configLB, "-\\\\", toupper(configValSplit))) %>% 
+  group_by(instance_name) %>% 
+  nest() %>% 
+  mutate(winner = map(data, function(df) {df %>% arrange(cpuTotal) %>% slice(1)})) %>% 
+  mutate(win = map(winner, function(df) {if_else(df$solved == 1, df$alg_config, "Unsolved")})) %>% 
+  select(-winner) %>% 
+  unnest(c(data, win))
+
+# results where at least on config solved the instance
+datResultSolvedI <- datResult %>% 
+  group_by(instance_name) %>% 
+  nest() %>% 
+  mutate(sol = map(data, function(df) {any(df$solved == 1)})) %>% 
+  unnest(sol) %>% 
+  filter(sol) %>% 
+  select(-sol) %>% 
+  unnest(data) 
+
+datResultAllSolved <- datResult %>% 
+  group_by(instance_name) %>% 
+  nest() %>% 
+  mutate(sol = map(data, function(df) {all(df$solved == 1)})) %>% 
+  unnest(sol) %>% 
+  filter(sol) %>% 
+  select(-sol) %>% 
+  unnest(data) 
+```
+
+## Test instances
+
+### Instance table
+
+Will be copied to Overleaf directly via DB.
+
+```{r Table with problem classes}
+res <- datResult 
+tabInput <- nest_join(datInput, res) %>% 
+  mutate(nd = map_dbl(res, function(df) {
+    if (any(df$solved == 1)) 
+      return(df %>% filter(solved == 1) %>% pull(YN) %>% mean())
+    return(df %>% pull(YN) %>% mean())
+  })) %>% 
+  group_by(class, n, p) %>% 
+  summarise(instances = n(), 
+            range_coeff_min = min(range_coeff_min), 
+            range_coeff_max = max(range_coeff_max),
+            coef_nd_pct = mean(coef_nd_pct),
+            const_mat_non_zeros = mean(const_mat_non_zeros),
+            range_int_min = min(range_int_min),
+            range_int_max = max(range_int_max),
+            n_binary = mean(n_binary),
+            n_integer = mean(n_integer),
+            nd = mean(nd)
+  )  %>%  
+  group_by(class, p) %>% 
+  summarise(n = str_c(n, collapse = ", "), 
+            coef_nd_pct = 100*mean(coef_nd_pct),
+            const_mat_non_zeros = 100*mean(const_mat_non_zeros),
+            range_coeff = str_c("[", min(range_coeff_min), ",", max(range_coeff_max), "]"),
+            range_int_var = str_c("[", min(range_int_min), ",", max(range_int_max), "]"),
+            instances = sum(instances),
+            nd = str_c(round(nd, 0), collapse = ", ")
+  )  
+
+table <- tabInput %>% 
+  relocate(range_coeff, coef_nd_pct, .after = n) %>% 
+  select(-range_int_var, -nd) %>% 
+  kable(format = "latex",
+        position = "tb",
+        align = c("X","X","L","Z","Z","Z","Z"),
+        escape = F,
+        label = "instances",
+        #table.envir = NULL,
+        booktabs = T,
+        digits = 0,
+        linesep = "",
+        col.names = c("Class", 
+                      str_c("$p$", footnote_marker_alphabet(1)), 
+                      str_c("$n$", footnote_marker_alphabet(2)), 
+                      str_c("$[C]$", footnote_marker_alphabet(3)),
+                      str_c("$\\% C$", footnote_marker_alphabet(4)),
+                      str_c("$\\% A$", footnote_marker_alphabet(5)),
+                      # str_c("$[\\N]$", footnote_marker_alphabet(6)),
+                      str_c("\\#", footnote_marker_alphabet(6))
+                      # str_c("$|\\YN|$", footnote_marker_alphabet(7))
+                    ),
+        caption = "Instances used and average number of non-dominated points.") %>% 
+  kable_styling(latex_table_env = "tabularx") %>%
+  # kable_styling(latex_options = "scale_down") %>%
+  footnote(alphabet = c("Number of objectives.", 
+                         "Number of variable sizes.", 
+                         "Range of the objective function coefficients $C$.",
+                         "Percentage of objective coefficients not dominated by other coefficients.",
+                         "Percentage of non-zeros in the constraint matrix $A$.",
+                         "Number of instances."
+                         # "Average number of non-dominated points for each variable size."
+                        ), 
+           footnote_as_chunk = F, escape = F, fixed_small_size = T) %>% 
+  str_replace("begin\\{tabularx\\}", "begin\\{tabularx\\}\\{\\\\linewidth\\}") %>% 
+  str_replace("centering", "tiny") %>% 
+  str_replace("\\#tab:instances", "label{tab:instances}")
+
+if (copyTabFigs) {
+  table %>% write_file(file = here(pathOverLeaf, "tab_instances.tex"))
+}
+```
+
+### Non-dominted points
+
+Will be copied to Overleaf directly via DB.
+
+```{r}
+res <- datResult %>% mutate(instance_name = str_remove(instance, "....$")) 
+dat <- nest_join(datInput, res) %>% 
+  mutate(nd = map_dbl(res, function(df) {
+    if (any(df$solved == 1)) 
+      return(df %>% filter(solved == 1) %>% pull(YN) %>% mean())
+    return(df %>% pull(YN) %>% mean())
+  }), 
+  solved = map_chr(res, function(df) {
+    if (any(df$solved == 1)) return("solved") else return("reached time limit")
+  }))
+
+scale_alpha_solved <- scale_alpha_manual(
+  values = c("solved" = 1, "reached time limit" = 0.25),
+  drop = F)
+
+p <- ggplot(aes(x = n, y = nd), data = dat) +
+  geom_point(aes(alpha = solved, color = factor(p)), size = 1) + 
+  geom_smooth(aes(color = factor(p)), se = F) +
+  facet_wrap(facets = vars(class), scales = 'free') +
+  xlab("variable size ($n$)") + ylab("number of non-dominated points") +
+  labs(color = "$p$", linetype = "$p$", alpha = "") +
+  theme_publish() +
+  scale_alpha_solved
+p
+if (copyTabFigs) {
+  tikz(file = here(pathOverLeaf, "fig_nd.tex"), standAlone=F, width = 7, height = 4)
+  print(p)
+  dev.off()
+}
+```
+
+Copy this to paper: The instances which have not been solved to optimality (`r round(length(which(dat$solved != "solved"))/nrow(dat)*100)`\%) are illustrated with transparent points.
+
+
+
+
+
+
+
+### Performance of the different algorithm configurations
+
+```{r}
+dat <- datResultSolvedI %>% 
+  group_by(alg_config) %>% 
+  summarize(cpu = mean(cpuTotal)) %>% 
+  arrange(cpu) %>% 
+  mutate(pct = round(100*(cpu/lag(cpu, default = cpu %>% .[1]) - 1)))
+res <- str_c(dat$alg_config, " (", dat$pct, "\\\\%)")
+```
+
+Copy this to the paper: First, we rank the configurations with respect to the average cpu time for all solved instances. The sequence from best to worst becomes `r knitr::combine_words(res)`, where the increase in percentages compared to the best configuration is given in parentheses. 
+
+### Performance plot
+
+Will be copied to Overleaf directly via DB.
+
+```{r perfPlotPct}
+dat <- datResult %>%
+  group_by(class, p, configLB) %>%
+  arrange(cpuTotal) %>%
+  mutate(count = row_number(), total = n()) %>% 
+  group_by(class, p) %>% 
+  mutate(total = max(total)) %>% 
+  group_by(class, alg_config, cpuTotal) %>% 
+  arrange(class, alg_config, cpuTotal, count) %>% 
+  filter(cpuTotal < 1800 | row_number() == 1) %>% 
+  mutate(pct = count/total, configValSplit = toupper(configValSplit)) %>% 
+  select(p, class, alg_config, cpuTotal, count, pct, total, configLB, configValSplit)
+
+p <- ggplot(dat) +
+  # geom_step(aes(x=tpstotal, y=count, color = nodeselVarsel, linetype = OB)) +
+  geom_step(aes(y=pct, x=cpuTotal, color = configLB, linetype = configValSplit), alpha = 0.75) +
+  # geom_point(aes(y=..y.., x=tpstotal, color = OB, linetype = nodeselVarsel), stat="ecdf", size = 1) +
+  facet_grid(rows = vars(class), cols = vars(p)) +
+  # ggtitle(str_c("Number of instances solved within a given cpu time")) +
+  labs(color = "", linetype = "") +
+  # scale_color_ob + #scale_linetype_nodesel_varsel +
+  xlab("cpu (seconds)") + ylab("\\%") +
+  theme_publish() +
+  coord_cartesian(expand = FALSE, ylim = c(0, NA), xlim = c(-10, 3550))
+p
+if (copyTabFigs) {
+  tikz(file = here(pathOverLeaf, "fig_pref_pct.tex"), standAlone=F, width = 7, height = 6)
+  print(p)
+  dev.off()
+}
+```
+
+```{r perf stat for text}
+dat <- datResultSolvedI %>% 
+  group_by(instance, win) %>% 
+  nest() %>% 
+  mutate(win_wlp = str_detect(win, "WLP")) %>% 
+  group_by(win_wlp) %>% 
+  summarize(ctr = n()) 
+str <- str_glue(
+  "\\\\comment[id=LRN]{{R script!}}Second, a comparison of the different algorithm configurations for a given problem class and objectives can be seen in \\\\autoref{{fig:performanceProfiles}}. We have increased the variable size for each problem class until the size becomes so large that some instances cannot be solved within the time limit. That is, the number of instances solved before the time limit is below 100\\\\%. Note that \\\\WLP in general performs best (fastest in {res}\\\\% of the instances).",
+  res = round(100 * dat %>% filter(win_wlp) %>% pull(ctr)/sum(dat$ctr))
+  )
+
+dat <- datResultSolvedI %>%
+  group_by(instance_name, configLB, class) %>%
+  summarise(cpu = mean(cpuTotal, na.rm = T)) %>% 
+  pivot_wider(names_from = configLB, values_from = cpu) %>% 
+  mutate(cpu_pct = 1- WLP/LP) %>% 
+  group_by(class) %>% 
+  summarise(cpu_pct = round(100 * mean(cpu_pct)))
+str <- str_c(str, str_glue(
+  "If we compare problem classes \\\\WLP performs well for all classes with an average cpu time reduction of {combine_words(res)} for {combine_words(dat$class)}, respectively.",
+  res = str_c(dat$cpu_pct, "\\\\%")
+), sep = " ")
+
+dat <- datResultSolvedI %>% 
+  group_by(instance_name, win, class) %>% 
+  nest() %>% 
+  mutate(win_wlp = str_detect(win, "WLP")) %>% 
+  filter(!win_wlp) %>% 
+  unnest(data) %>% 
+  filter(win == alg_config) %>% 
+  group_by(class) %>% 
+  summarise(ctr = n(), cpu = round(mean(cpuTotal))) 
+str <- str_c(str, str_glue(
+  "In a few instances \\\\LP performs best. This happens for {dat %>% filter(class == 'ILP') %>% pull(ctr)} instances in ILP with an average cpu time of {dat %>% filter(class == 'ILP') %>% pull(cpu)} seconds. We will have a closer look at reason for this in \\\\autoref{{sec:}}."
+), sep = " ")
+
+str
+# dat <- datResultSolvedI %>%
+#   group_by(instance, win) %>%
+#   nest() %>%
+#   mutate(win_med = str_detect(win, "MED")) %>%
+#   filter(str_detect(win, "WLP")) %>%
+#   group_by(win_med, win) %>%
+#   summarize(ctr = n())
+# res2 <- round(100 * dat %>% filter(win_med) %>% pull(ctr)/sum(dat$ctr))
+
+# dat <- datResultSolvedI %>%
+#   filter(class == "ILP") %>% 
+#   group_by(instance_name, configLB) %>%
+#   summarise(cpu = mean(cpuTotal, na.rm = T)) %>% 
+#   pivot_wider(id_cols = instance_name, names_from = configLB, values_from = cpu) %>% 
+#   mutate(cpu_pct = 1- WLP/LP) 
+# res4 <- round(100 * mean(dat$cpu_pct))
+```
+
+Copy this to the paper: `r str`
+
+
+
+## Variable selection - Rules for choosing the bound
+
+```{r pref bound}
+dat <- datResultSolvedI %>% #filter(instance_name == "Kirlik14-ILP_p-3_n-30_m-15_ins-3") %>%
+  filter(class != "UFLP") %>%   # remove binary
+  group_by(instance, win) %>%
+  mutate(win_lb = if_else(str_detect(win, "WLP"), "WLP", "LP"),
+         win_bound = if_else(str_detect(win, "MED"), "med", "mofv")) %>% 
+  filter(configLB == win_lb) %>% 
+  pivot_wider(id_cols = c(instance_name, win_bound), names_from = configValSplit, values_from = cpuTotal) %>% 
+  mutate(diff = abs(med-mofv)) %>% 
+  rowwise() %>% 
+  mutate(pct = max(med,mofv)/min(med,mofv) - 1) %>% 
+  group_by(win_bound) %>%
+  summarize(ctr = n(), diff = mean(diff), pct = mean(pct))
+str1 <- str_glue(
+  "\\\\comment[id=LRN]{{R script!}}We are here interested in determining whether one rule for finding the bound (\\\\MED and \\\\MOFV) is consistently better than the other. Since the effect on the branching tree of using \\\\LP vs \\\\WLP is negligible, we will consider the winning configuration of \\\\LP and \\\\WLP here. By considering the performance profiles in \\\\autoref{{fig:performanceProfiles}} we see that there is no clear winner among \\\\MED and \\\\MOFV. The \\\\MOFV-configuration performed best in {res}\\\\% of the instances and on average the cpu time difference was {round(mean(dat$diff))} seconds (a {round(100*mean(dat$pct))}\\\\% increase compared to the lowest cpu time)",
+  res = round(100 * dat %>% filter(win_bound == "mofv") %>% pull(ctr) / sum(dat$ctr))
+  )
+```
+
+Copy this to the paper: `r str1`
+
+### Bound factor table
+
+Will be copied to Overleaf directly via DB.
+
+```{r bound table, eval=FALSE}
+dat1 <- datResultSolvedI %>% 
+  filter(class != "UFLP") %>%   # remove binary
+  group_by(instance, win) %>%
+  mutate(win_lb = if_else(str_detect(win, "WLP"), "WLP", "LP"),
+         win_bound = if_else(str_detect(win, "MED"), "med", "mofv")) %>% 
+  filter(configLB == win_lb) %>% # only consider the win LB config
+  group_by(instance_name) %>% 
+  nest() %>% 
+  mutate(sol = map(data, function(df) {all(df$solved == 1)})) %>% 
+  unnest(sol) %>% 
+  filter(sol) %>% # remove instances with unsolved configs
+  select(-sol) %>% 
+  unnest(data) %>% 
+  select(instance_name, configValSplit, cpuTotal, class, p) %>%
+  group_by(instance_name) %>%
+  pivot_wider(names_from = configValSplit, values_from = c(cpuTotal)) %>%
+  group_by(class, p) %>%
+  summarise(avgSpeedup = mean(med) / mean(mofv)) %>%
+  ungroup() %>%
+  pivot_wider(names_from = p, values_from = avgSpeedup)
+
+dat2 <- datResultSolvedI %>% 
+  filter(class != "UFLP") %>%   # remove binary
+  group_by(instance, win) %>%
+  mutate(win_lb = if_else(str_detect(win, "WLP"), "WLP", "LP"),
+         win_bound = if_else(str_detect(win, "MED"), "med", "mofv")) %>% 
+  filter(configLB == win_lb) %>% # only consider the win LB config
+  group_by(instance_name) %>% 
+  nest() %>% 
+  mutate(sol = map(data, function(df) {all(df$solved == 1)})) %>% 
+  unnest(sol) %>% 
+  filter(sol) %>% # remove instances with unsolved configs
+  select(-sol) %>% 
+  unnest(data) %>% 
+  select(instance_name, configValSplit, nbNodes, class, p) %>%
+  group_by(instance_name) %>%
+  pivot_wider(names_from = configValSplit, values_from = c(nbNodes)) %>% #filter(mofv > med)
+  group_by(class, p) %>%
+  summarise(avgSpeedup = mean(med) / mean(mofv)) %>%
+  ungroup() %>%
+  pivot_wider(names_from = p, values_from = avgSpeedup)
+
+dat <- bind_cols(dat1,dat2 %>% select(-class)) %>% 
+  mutate(across(where(is.numeric), ~format(round(.x, 2), nsmall = 2)))
+
+table <- dat %>% 
+  kable(format = "latex",
+        position = "tb",
+        align = c("X","Y","Y","Y","Y","Y","Y"),
+        escape = F,
+        label = "factorBound",
+        #table.envir = NULL,
+        booktabs = T,
+        digits = 0,
+        linesep = "",
+        col.names = c("Class",
+                      str_c("$p=3$"), str_c("$p=4$"), str_c("$p=5$"),
+                      str_c("$p=3$"), str_c("$p=4$"), str_c("$p=5$")
+                    ),
+        caption = "Speed-up factor of using \\MOFV instead of \\MED for each problem class and number of objectives.") %>% 
+  kable_styling(latex_table_env = "tabularx") %>%
+  add_header_above(c(" " = 1, "Cpu" = 3, "Branching tree size" = 3))%>% 
+  # kable_styling(latex_options = "scale_down") %>% 
+  str_replace("begin\\{tabularx\\}", "begin\\{tabularx\\}\\{\\\\linewidth\\}") %>% 
+  str_replace("centering", "footnotesize") %>% 
+  str_replace("\\#tab:factorBound", "label{tab:factorBound}")
+table
+
+if (copyTabFigs) {
+  table %>% write_file(file = here(pathOverLeaf, "tab_bound.tex"))
+}
+```
+
+
+
+
