@@ -31,8 +31,8 @@ knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",
   warning=FALSE, message=FALSE, include = TRUE, 
-  cache = TRUE, autodep = TRUE,
-  echo=F, results = "hide",
+  # cache = TRUE, autodep = TRUE,
+  echo=F, #results = "hide",
   out.width = "99%", fig.width = 8, fig.align = "center", fig.asp = 0.7,
   tidy.opts = list(width.cutoff = 80), tidy = F
   # layout="l-page"   #"l-screen-inset"
@@ -54,6 +54,13 @@ library(rmarkdown)
 here::i_am(path = "results/paper_tab_fig/fig_tab.Rmd")
 pathOverLeaf <- "/Users/au15463/Dropbox/Apps/Overleaf/LP_relax_based_BB"
 copyTabFigs <- TRUE
+```
+
+```{r snippet function}
+save_snippet <- function(name, str, path = here(pathOverLeaf, "snippets.tex"), append = T) {
+  str <- str_c("\\newcommand{\\", name, "}{", str, "}\n")
+  write_lines(str, path, append = append)
+}
 ```
 
 ```{r color scales, include=FALSE}
@@ -106,7 +113,7 @@ datInput <- read_csv(here("results", "paper_tab_fig", "instances.csv"))
 datResult <- read_csv(here("results", "convert", "csv", "resultsMain.csv")) %>% 
   mutate(instance_name = str_remove(instance, "....$"),
          class = str_replace(instance_name, "^.*?-(.*?)_(.*)", "\\1"),
-         alg_config = str_c("\\\\", configLB, "-\\\\", toupper(configValSplit))) %>% 
+         alg_config = str_c("\\", configLB, "-\\", toupper(configValSplit))) %>% 
   group_by(instance_name) %>% 
   nest() %>% 
   mutate(winner = map(data, function(df) {df %>% arrange(cpuTotal) %>% slice(1)})) %>% 
@@ -132,13 +139,15 @@ datResultAllSolved <- datResult %>%
   filter(sol) %>% 
   select(-sol) %>% 
   unnest(data) 
+
+datLBStat <- read_csv(here("results/paper_tab_fig/lb_set.csv"))
 ```
 
 ## Test instances
 
 ### Instance table
 
-Will be copied to Overleaf directly via DB.
+Will be copied to Overleaf directly via DB:
 
 ```{r Table with problem classes}
 res <- datResult 
@@ -204,9 +213,10 @@ table <- tabInput %>%
                          # "Average number of non-dominated points for each variable size."
                         ), 
            footnote_as_chunk = F, escape = F, fixed_small_size = T) %>% 
-  str_replace("begin\\{tabularx\\}", "begin\\{tabularx\\}\\{\\\\linewidth\\}") %>% 
   str_replace("centering", "tiny") %>% 
-  str_replace("\\#tab:instances", "label{tab:instances}")
+  str_replace(fixed("(\\#tab:instances)"), "\\label{tab:instances}") %>% 
+  str_replace("begin\\{tabularx\\}", "begin\\{tabularx\\}\\{\\\\linewidth\\}") 
+table %>% kable(format = "html")
 
 if (copyTabFigs) {
   table %>% write_file(file = here(pathOverLeaf, "tab_instances.tex"))
@@ -215,7 +225,7 @@ if (copyTabFigs) {
 
 ### Non-dominted points
 
-Will be copied to Overleaf directly via DB.
+Will be copied to Overleaf directly via DB:
 
 ```{r}
 res <- datResult %>% mutate(instance_name = str_remove(instance, "....$")) 
@@ -249,7 +259,11 @@ if (copyTabFigs) {
 }
 ```
 
-Copy this to paper: The instances which have not been solved to optimality (`r round(length(which(dat$solved != "solved"))/nrow(dat)*100)`\%) are illustrated with transparent points.
+```{r}
+str <- str_glue("\\comment[id=LRN]{{Generated using R. Don't modify here.}}In \\autoref{{fig:nd}} the number of non-dominated points are given for each instance. We have increased the variable size for each problem class until the size becomes so large that some instances cannot be solved within the time limit. The instances which have not been solved to optimality ({res}\\%) are illustrated with transparent points. In general the number of non-dominated points grow with variable size ($n$) and number of objectives ($p$). Note though that there may be a high variation for fixed $n$ and $p$. Moreover, the variation grows with $n$ and $p$. For UFLP the number of non-dominated points grows rapidly as a function of variable size which is due to the high percentage of objective coefficients not dominated by other coefficients.",
+              res = round(length(which(dat$solved != "solved"))/nrow(dat)*100))
+save_snippet("snipInstancesA", str, append = F)
+```
 
 
 
@@ -257,18 +271,22 @@ Copy this to paper: The instances which have not been solved to optimality (`r r
 
 
 
-### Performance of the different algorithm configurations
+## Performance of the different algorithm configurations
 
 ```{r}
 dat <- datResultSolvedI %>% 
   group_by(alg_config) %>% 
-  summarize(cpu = mean(cpuTotal)) %>% 
+  summarize(cpu = mean(cpuTotal), .groups = "drop") %>% 
   arrange(cpu) %>% 
-  mutate(pct = round(100*(cpu/lag(cpu, default = cpu %>% .[1]) - 1)))
-res <- str_c(dat$alg_config, " (", dat$pct, "\\\\%)")
+  mutate(pct = round(100*(cpu/min(cpu) - 1)))
+res <- str_c(dat$alg_config, " (", dat$pct, "\\%)")
 ```
 
-Copy this to the paper: First, we rank the configurations with respect to the average cpu time for all solved instances. The sequence from best to worst becomes `r knitr::combine_words(res)`, where the increase in percentages compared to the best configuration is given in parentheses. 
+```{r}
+str <- str_glue("\\comment[id=LRN]{{Generated using R. Don't modify here.}}First, we rank the configurations with respect to the average cpu time for all solved instances. The sequence from best to worst becomes {knitr::combine_words(res)}, where the increase in percentages compared to the best configuration is given in parentheses.")
+save_snippet("snipAlgConfigA", str)
+```
+
 
 ### Performance plot
 
@@ -314,7 +332,7 @@ dat <- datResultSolvedI %>%
   group_by(win_wlp) %>% 
   summarize(ctr = n()) 
 str <- str_glue(
-  "\\\\comment[id=LRN]{{R script!}}Second, a comparison of the different algorithm configurations for a given problem class and objectives can be seen in \\\\autoref{{fig:performanceProfiles}}. We have increased the variable size for each problem class until the size becomes so large that some instances cannot be solved within the time limit. That is, the number of instances solved before the time limit is below 100\\\\%. Note that \\\\WLP in general performs best (fastest in {res}\\\\% of the instances).",
+  "\\comment[id=LRN]{{Generated using R. Don't modify here.}}Second, a comparison of the different algorithm configurations for a given problem class and objectives can be seen in \\autoref{{fig:performanceProfiles}}. We have increased the variable size for each problem class until the size becomes so large that some instances cannot be solved within the time limit. That is, the number of instances solved before the time limit is below 100\\%. Note that \\WLP in general performs best (fastest in {res}\\% of the instances).",
   res = round(100 * dat %>% filter(win_wlp) %>% pull(ctr)/sum(dat$ctr))
   )
 
@@ -326,8 +344,8 @@ dat <- datResultSolvedI %>%
   group_by(class) %>% 
   summarise(cpu_pct = round(100 * mean(cpu_pct)))
 str <- str_c(str, str_glue(
-  "If we compare problem classes \\\\WLP performs well for all classes with an average cpu time reduction of {combine_words(res)} for {combine_words(dat$class)}, respectively.",
-  res = str_c(dat$cpu_pct, "\\\\%")
+  "If we compare problem classes \\WLP performs well for all classes with an average cpu time reduction of {combine_words(res)} for {combine_words(dat$class)}, respectively.",
+  res = str_c(dat$cpu_pct, "\\%")
 ), sep = " ")
 
 dat <- datResultSolvedI %>% 
@@ -340,29 +358,11 @@ dat <- datResultSolvedI %>%
   group_by(class) %>% 
   summarise(ctr = n(), cpu = round(mean(cpuTotal))) 
 str <- str_c(str, str_glue(
-  "In a few instances \\\\LP performs best. This happens for {dat %>% filter(class == 'ILP') %>% pull(ctr)} instances in ILP with an average cpu time of {dat %>% filter(class == 'ILP') %>% pull(cpu)} seconds. We will have a closer look at reason for this in \\\\autoref{{sec:}}."
+  "In a few instances \\LP performs best. This happens for {dat %>% filter(class == 'ILP') %>% pull(ctr)} instances in ILP with an average cpu time of {dat %>% filter(class == 'ILP') %>% pull(cpu)} seconds. We will have a closer look at reason for this in \\autoref{{sec:resDetails}}."
 ), sep = " ")
 
-str
-# dat <- datResultSolvedI %>%
-#   group_by(instance, win) %>%
-#   nest() %>%
-#   mutate(win_med = str_detect(win, "MED")) %>%
-#   filter(str_detect(win, "WLP")) %>%
-#   group_by(win_med, win) %>%
-#   summarize(ctr = n())
-# res2 <- round(100 * dat %>% filter(win_med) %>% pull(ctr)/sum(dat$ctr))
-
-# dat <- datResultSolvedI %>%
-#   filter(class == "ILP") %>% 
-#   group_by(instance_name, configLB) %>%
-#   summarise(cpu = mean(cpuTotal, na.rm = T)) %>% 
-#   pivot_wider(id_cols = instance_name, names_from = configLB, values_from = cpu) %>% 
-#   mutate(cpu_pct = 1- WLP/LP) 
-# res4 <- round(100 * mean(dat$cpu_pct))
+save_snippet("snipAlgConfigB", str)
 ```
-
-Copy this to the paper: `r str`
 
 
 
@@ -371,34 +371,56 @@ Copy this to the paper: `r str`
 ```{r pref bound}
 dat <- datResultSolvedI %>% #filter(instance_name == "Kirlik14-ILP_p-3_n-30_m-15_ins-3") %>%
   filter(class != "UFLP") %>%   # remove binary
-  group_by(instance, win) %>%
-  mutate(win_lb = if_else(str_detect(win, "WLP"), "WLP", "LP"),
-         win_bound = if_else(str_detect(win, "MED"), "med", "mofv")) %>% 
-  filter(configLB == win_lb) %>% 
-  pivot_wider(id_cols = c(instance_name, win_bound), names_from = configValSplit, values_from = cpuTotal) %>% 
-  mutate(diff = abs(med-mofv)) %>% 
-  rowwise() %>% 
-  mutate(pct = max(med,mofv)/min(med,mofv) - 1) %>% 
-  group_by(win_bound) %>%
-  summarize(ctr = n(), diff = mean(diff), pct = mean(pct))
-str1 <- str_glue(
-  "\\\\comment[id=LRN]{{R script!}}We are here interested in determining whether one rule for finding the bound (\\\\MED and \\\\MOFV) is consistently better than the other. Since the effect on the branching tree of using \\\\LP vs \\\\WLP is negligible, we will consider the winning configuration of \\\\LP and \\\\WLP here. By considering the performance profiles in \\\\autoref{{fig:performanceProfiles}} we see that there is no clear winner among \\\\MED and \\\\MOFV. The \\\\MOFV-configuration performed best in {res}\\\\% of the instances and on average the cpu time difference was {round(mean(dat$diff))} seconds (a {round(100*mean(dat$pct))}\\\\% increase compared to the lowest cpu time)",
+  # group_by(instance, win) %>%
+  # mutate(win_lb = if_else(str_detect(win, "WLP"), "WLP", "LP"),
+  #        win_bound = if_else(str_detect(win, "MED"), "med", "mofv")) %>% 
+  filter(configLB == "WLP") %>%
+  group_by(class, configValSplit) %>% 
+  summarize(cpu = mean(nbNodes)) %>% print
+  
+  
+  
+  mutate(win_bound = case_when(
+           str_detect(win, "MED") ~ "\\MED",
+           str_detect(win, "MOFV") ~ "\\MOFV",
+           str_detect(win, "RAND") ~ "\\RAND",
+           TRUE ~ "error"
+         )) %>%
+  group_by(instance_name) %>% 
+  mutate(diff = cpuTotal-min(cpuTotal),
+         pct = round(100*(cpuTotal/min(cpuTotal) - 1))) %>% 
+  arrange(cpuTotal, .by_group = T) %>%
+  group_by(win_bound, class) %>%
+  summarize(ctr = n(), diff = mean(diff), pct = mean(pct), cpuTotal = mean(cpuTotal)) %>% 
+  mutate(ctr_pct = round(100 * ctr/sum(ctr))) %>% 
+  group_by(class) %>% 
+  arrange(desc(ctr_pct), .by_group = T) %>% print()
+str <- str_glue(
+  "\\comment[id=LRN]{{Generated using R. Don't modify here.}}We are here interested in determining whether one rule for finding the bound (\\MED, \\MOFV and \\RANS) is consistently better than the other when considering non-binary integer problems. Since the effect on the branching tree of using \\LP vs \\WLP is negligible, we will consider the \\WLP configuration here. By considering the performance profiles in \\autoref{{fig:performanceProfiles}} we see that there is no clear winner among {knitr::combine_words(dat$win_bound)}. 
+  
+The {dat$win_bound[1]}-configuration performed best in {dat$ctr_pct[1]}\\% of the instances and on average the cpu time difference was {round(mean(dat$diff))} seconds (a {round(100*mean(dat$pct))}\\% increase compared to the lowest cpu time)",
   res = round(100 * dat %>% filter(win_bound == "mofv") %>% pull(ctr) / sum(dat$ctr))
   )
+save_snippet("snipBoundA", str)
 ```
 
-Copy this to the paper: `r str1`
+
 
 ### Bound factor table
 
-Will be copied to Overleaf directly via DB.
+Will be copied to Overleaf directly via DB:
 
-```{r bound table, eval=FALSE}
-dat1 <- datResultSolvedI %>% 
+```{r bound table}
+dat1 <- datResultSolvedI %>% #filter(instance_name == "Kirlik14-ILP_p-3_n-30_m-15_ins-10") %>% view()
   filter(class != "UFLP") %>%   # remove binary
   group_by(instance, win) %>%
   mutate(win_lb = if_else(str_detect(win, "WLP"), "WLP", "LP"),
-         win_bound = if_else(str_detect(win, "MED"), "med", "mofv")) %>% 
+         win_bound = case_when(
+           str_detect(win, "MED") ~ "med",
+           str_detect(win, "MOFV") ~ "mofv",
+           str_detect(win, "RAND") ~ "rand",
+           TRUE ~ "error"
+         )) %>% 
   filter(configLB == win_lb) %>% # only consider the win LB config
   group_by(instance_name) %>% 
   nest() %>% 
@@ -409,9 +431,9 @@ dat1 <- datResultSolvedI %>%
   unnest(data) %>% 
   select(instance_name, configValSplit, cpuTotal, class, p) %>%
   group_by(instance_name) %>%
-  pivot_wider(names_from = configValSplit, values_from = c(cpuTotal)) %>%
+  pivot_wider(names_from = configValSplit, values_from = c(cpuTotal), values_fill = NA, values_fn = {mean}) %>%
   group_by(class, p) %>%
-  summarise(avgSpeedup = mean(med) / mean(mofv)) %>%
+  summarise(avgSpeedup = mean(med/mofv)) %>%
   ungroup() %>%
   pivot_wider(names_from = p, values_from = avgSpeedup)
 
@@ -432,7 +454,7 @@ dat2 <- datResultSolvedI %>%
   group_by(instance_name) %>%
   pivot_wider(names_from = configValSplit, values_from = c(nbNodes)) %>% #filter(mofv > med)
   group_by(class, p) %>%
-  summarise(avgSpeedup = mean(med) / mean(mofv)) %>%
+  summarise(avgSpeedup = mean(med/mofv)) %>%
   ungroup() %>%
   pivot_wider(names_from = p, values_from = avgSpeedup)
 
@@ -459,7 +481,7 @@ table <- dat %>%
   # kable_styling(latex_options = "scale_down") %>% 
   str_replace("begin\\{tabularx\\}", "begin\\{tabularx\\}\\{\\\\linewidth\\}") %>% 
   str_replace("centering", "footnotesize") %>% 
-  str_replace("\\#tab:factorBound", "label{tab:factorBound}")
+  str_replace(fixed("(\\#tab:factorBound)"), "\\label{tab:factorBound}")
 table
 
 if (copyTabFigs) {
@@ -468,5 +490,256 @@ if (copyTabFigs) {
 ```
 
 
+## Detailed performance of different algorithm parts
+
+Will be copied to Overleaf directly via DB:
+
+```{r factor lp/wlp table}
+dat <- datResultSolvedI %>% 
+  filter(configValSplit == "mofv" | class == "UFLP") %>% 
+  group_by(instance_name) %>%
+  nest() %>% 
+  mutate(sol = map(data, function(df) {all(df$solved == 1)})) %>% 
+  unnest(sol) %>% 
+  filter(sol) %>% # remove instances with unsolved configs
+  select(-sol) %>% 
+  unnest(data) %>% 
+  select(instance_name, configLB, cpuTotal, nbLpSolved, nbNodes, class, p) %>%
+  group_by(instance_name) %>%
+  pivot_wider(names_from = configLB, values_from = c(cpuTotal, nbLpSolved, nbNodes)) %>% 
+  ungroup() %>%
+  group_by(class, p) %>%
+  summarise(avgSpeedup = mean(cpuTotal_LP/cpuTotal_WLP), avgLP = mean(nbLpSolved_LP/nbLpSolved_WLP)) %>%
+  ungroup() %>%
+  pivot_wider(names_from = p, values_from = c(avgSpeedup, avgLP))
+
+table <- dat %>% 
+  kable(format = "latex",
+        position = "tb",
+        align = c("X","Y","Y","Y","Y","Y","Y"),
+        escape = F,
+        label = "factorLB",
+        #table.envir = NULL,
+        booktabs = T,
+        digits = 2,
+        linesep = "",
+        col.names = c("Class",
+                      str_c("$p=3$"), str_c("$p=4$"), str_c("$p=5$"),
+                      str_c("$p=3$"), str_c("$p=4$"), str_c("$p=5$")
+                    ),
+        caption = "Speed-up factor using \\WLP instead of \\LP for each problem class and number of objectives. The rule for choosing the bound is \\MOFV.") %>% 
+  kable_styling(latex_table_env = "tabularx") %>%
+  add_header_above(c(" " = 1, "Cpu" = 3, "LPs solved" = 3))%>% 
+  # kable_styling(latex_options = "scale_down") %>% 
+  str_replace("begin\\{tabularx\\}", "begin\\{tabularx\\}\\{\\\\linewidth\\}") %>% 
+  str_replace("centering", "footnotesize") %>% 
+  str_replace(fixed("(\\#tab:factorLB)"), "\\label{tab:factorLB}")
+table
+
+if (copyTabFigs) {
+  table %>% write_file(file = here(pathOverLeaf, "tab_factor_lb.tex"))
+}
+```
+
+```{r detailed text}
+dat <- datResultSolvedI %>% 
+  filter(configValSplit == "mofv" | class == "UFLP") %>% 
+  group_by(instance_name) %>%
+  nest() %>% 
+  mutate(sol = map(data, function(df) {all(df$solved == 1)})) %>% 
+  unnest(sol) %>% 
+  filter(sol) %>% # remove instances with unsolved configs
+  select(-sol) %>% 
+  unnest(data) %>% 
+  select(instance_name, configLB, cpuTotal, nbLpSolved, nbNodes, class, p) %>%
+  group_by(instance_name) %>%
+  pivot_wider(names_from = configLB, values_from = c(cpuTotal, nbLpSolved, nbNodes)) %>% 
+  ungroup() %>%
+  group_by(class, p) %>%
+  summarise(avgSpeedup = mean(cpuTotal_LP/cpuTotal_WLP), avgLP = mean(nbLpSolved_LP/nbLpSolved_WLP))
+dat2 <- datResult %>%
+  filter(configValSplit == "mofv" | class == "UFLP", solved == 1) %>%
+  mutate(
+    pctLB = 100 * cpuLbComputation / cpuTotal ,
+    pctUB = 100 * cpuUbUpdate / cpuTotal ,
+    pctDomiTest = 100 * cpuDominanceTest / cpuTotal ,
+    pctNodeSel = 100 * cpuNodeSel / cpuTotal ,
+    pctVarSel = 100 * cpuVarSel / cpuTotal ,
+    pctOther = 100 - pctLB - pctUB - pctDomiTest - pctNodeSel - pctVarSel
+  ) %>%
+  group_by(p, configLB, class) %>%
+  summarise(
+    `Calculation of LB` = mean(pctLB) ,
+    `Updating UB` = mean(pctUB) ,
+    `Pruning nodes` = mean(pctDomiTest) ,
+    Other = mean(pctOther) + mean(pctNodeSel) + mean(pctVarSel)
+  )
+str <- str_glue("\\comment[id=LRN]{{Generated using R. Don't modify here.}}In this section, we take a closer look at different parts of \\autoref{{alg:BB}}. Different speed-up factors by using \\WLP instead of \\LP are given in \\autoref{{tab:factorLB}}. The factor is obtained by dividing the \\LP value with the \\WLP value. Only instances with both configurations solved are recorded. \\WLP are on average {res1} times faster than \\LP with significant differences among the problem classes, \\eg for problem class UFLP, \\WLP is on average {res2} times faster while for class ILP the speed-up is {res3}.
+                
+Most of the cpu time ({res4a}\\% for \\LP and {res4b}\\% for \\WLP) is used on calculating the lower bound set (\\autoref{{alg:benson}}) and the speed-up is mainly due to a reduction in the number of times the LP solver has to be called on \\autoref{{l:checkV}} in \\autoref{{alg:benson}}. This can be seen in \\autoref{{tab:factorLB}}. For example, for UFLP \\WLP is {res2} times faster and solved {res5} times less LPs on average than \\LP. However, when using \\WLP the initial outer approximation has to be copied from the father node into the child node and managing the polyhedron is harder since we have to check for redundant half-spaces in \\autoref{{alg:updateP}} (lines \\ref{{l:sRemoveH}}-\\ref{{l:eRemoveH}}). As a result we have a smaller reduction in cpu times compared to the reduction in tree size.",
+  res1 = round(mean(dat$avgSpeedup), 2),
+  res2 = round(dat %>% filter(class == "UFLP") %>% pull(avgSpeedup) %>% mean(), 2),
+  res3 = round(dat %>% filter(class == "ILP") %>% pull(avgSpeedup) %>% mean(), 2),
+  res4a = round(dat2 %>% filter(configLB == "LP") %>% pull(`Calculation of LB`) %>% mean),
+  res4b = round(dat2 %>% filter(configLB == "WLP") %>% pull(`Calculation of LB`) %>% mean),
+  res5 = round(dat %>% filter(class == "UFLP") %>% pull(avgLP) %>% mean(), 2)
+  )
+save_snippet("snipDetailsA", str)
+```
+
+```{r parts BB fig, eval=FALSE}
+p <- datResult %>%
+  filter(configValSplit == "mofv" | class == "UFLP", solved == 1) %>%
+  mutate(
+    pctLB = 100 * cpuLbComputation / cpuTotal ,
+    pctUB = 100 * cpuUbUpdate / cpuTotal ,
+    pctDomiTest = 100 * cpuDominanceTest / cpuTotal ,
+    pctNodeSel = 100 * cpuNodeSel / cpuTotal ,
+    pctVarSel = 100 * cpuVarSel / cpuTotal ,
+    pctOther = 100 - pctLB - pctUB - pctDomiTest - pctNodeSel - pctVarSel
+  ) %>%
+  group_by(p, configLB, class) %>%
+  summarise(
+    `Calculation of LB` = mean(pctLB) ,
+    `Updating UB` = mean(pctUB) ,
+    `Pruning nodes` = mean(pctDomiTest) ,
+    Other = mean(pctOther) + mean(pctNodeSel) + mean(pctVarSel)
+  ) %>%
+  pivot_longer(!c(class, p, configLB) , names_to = "part" , values_to = "pctCpu") %>%
+  ggplot(aes(
+    x = factor(configLB),
+    y = pctCpu,
+    fill = part
+  )) +
+  geom_col(color = "black") +
+  geom_text(
+    aes(label = round(pctCpu, 1)),
+    colour = "white",
+    size = 2.5,
+    position = position_stack(vjust = .5)
+  ) +
+  facet_grid(
+    rows = vars(class) ,
+    cols = vars(p),
+    margins = F,
+    # scales = "free"
+  ) +
+  labs(color = "", fill = "") +
+  ylab("percent of total cpu time") + xlab("") +
+  theme_publish()
+p
+
+if (copyTabFigs) {
+  tikz(file = here(pathOverLeaf, "fig_part_bb.tex"), standAlone=F, width = 7, height = 6)
+  print(p)
+  dev.off()
+}
+```
+
+Will be copied to Overleaf directly via DB:
+
+```{r, eval=FALSE}
+dat <- datResult %>%
+  filter(configValSplit == "mofv" | class == "UFLP", solved == 1) %>%
+  group_by(p, class, configLB) %>% 
+  summarise(poly = mean(cpuUpdatePolyhedron)) %>% print() %>% 
+  group_by(configLB) %>% 
+  summarise(poly = mean(poly)) %>% print
+  
+  
+  
+  mutate(cpuLbComputation = cpuLbComputation - cpuInitialization) %>% 
+  
+  mutate(
+    pctCplex = 100 * cpuCplex / cpuLbComputation ,
+    pctUpdatePolyhedron = 100 * cpuUpdatePolyhedron / cpuLbComputation ,
+    pctOther = 100 - pctCplex - pctUpdatePolyhedron
+  ) %>%
+  group_by(p, class, configLB) %>%
+  summarise(
+    `Solve LPs` = mean(pctCplex) ,
+    `Update polyhedron` = mean(pctUpdatePolyhedron) ,
+    Other = mean(pctOther)
+  ) %>%
+  pivot_longer(!c(p, class, configLB) , names_to = "part" , values_to = "pctCpu") 
+
+dat %>% group_by(p, class, configLB) %>% summarise(pct = sum(pctCpu))
+dat %>% group_by(p, class, configLB) %>% summarise()
+```
+
+
+```{r parts benson fig}
+p <- datResult %>%
+  filter(configValSplit == "mofv" | class == "UFLP", solved == 1) %>%
+  mutate(
+    pctCplex = 100 * cpuCplex / cpuLbComputation ,
+    pctUpdatePolyhedron = 100 * cpuUpdatePolyhedron / cpuLbComputation ,
+    pctInitialization = 100 * cpuInitialization / cpuLbComputation,
+    pctOther = 100 - pctCplex - pctUpdatePolyhedron - pctInitialization
+  ) %>%
+  group_by(p, class, configLB) %>%
+  summarise(
+    `Solve LPs` = mean(pctCplex) ,
+    `Update polyhedron` = mean(pctUpdatePolyhedron) ,
+    `Initialization` = mean(pctInitialization) ,
+    Other = mean(pctOther)
+  ) %>%
+  pivot_longer(!c(p, class, configLB) , names_to = "part" , values_to = "pctCpu") %>% 
+  ggplot(aes(
+    x = factor(configLB),
+    y = pctCpu,
+    fill = part
+  )) +
+  geom_col(color = "black") +
+  geom_text(
+    aes(label = round(pctCpu, 1)),
+    colour = "white",
+    size = 2.5,
+    position = position_stack(vjust = .5)
+  ) +
+  facet_grid(
+    rows = vars(class) ,
+    cols = vars(p),
+    margins = F,
+    # scales = "free"
+  ) +
+  labs(color = "", fill = "") +
+  ylab("percent of total cpu time") + xlab("") +
+  theme_publish()
+p
+
+if (copyTabFigs) {
+  tikz(file = here(pathOverLeaf, "fig_part_benson.tex"), standAlone=F, width = 7, height = 6)
+  print(p)
+  dev.off()
+}
+```
+
+
+## Polyhedral properties of the lower bound set during the algorithm
+
+```{r}
+dat <- datLBStat %>% 
+  # filter(configLB == "WLP") %>% 
+  group_by(class, configLB, configValSplit, depth, p) %>% 
+  summarise(across(starts_with("avg"), mean)) %>% print
+  
+dat %>%   
+  pivot_longer(cols = starts_with("avg")) %>% 
+  ggplot(aes(x = depth, y = value, color = name)) +
+  geom_line() +
+  facet_grid(rows = vars(class, configLB), cols = vars(p), scales = "free")
+
+dat %>% 
+  select(-avgVertex) %>% 
+  pivot_longer(cols = starts_with("avg")) %>% 
+  ggplot(aes(x = depth, y = value, color = name)) +
+  geom_line() +
+  facet_grid(rows = vars(class, configLB), cols = vars(p), scales = "free")
+
+
+
+
+```
 
 
