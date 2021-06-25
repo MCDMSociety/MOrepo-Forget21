@@ -14,7 +14,7 @@ dat <- read_csv(here("results", "convert", "csv", "resultsMain.csv")) %>%
          instance = instance_name,
          class = str_replace(instance_name, "^.*?-(.*?)_(.*)", "\\1"),
          alg_config = str_c("\\", configLB, "-\\", toupper(configValSplit))) %>% 
-  filter(solved == 1) %>% 
+  filter(solved == 1) %>% #filter(instance_name == "Forget21-PPP_10_3_1-100_1-100_1-2500_1_50_random_10_10") %>% 
   group_by(instance_name) %>% 
   filter(n() > 1) %>% 
   nest() %>%
@@ -27,7 +27,7 @@ dat <- read_csv(here("results", "convert", "csv", "resultsMain.csv")) %>%
         nDSet = tmp
         next
       }
-      if (nrow(setdiff(nDSet[,1:(ncol(nDSet)-1)], tmp[,1:(ncol(tmp)-1)])) > 0) {
+      if (!setequal(nDSet[,1:(ncol(nDSet)-1)], tmp[,1:(ncol(tmp)-1)])) {
         warning("Different nondominated sets for instance ", df$instance[i])
         return(FALSE)
       }
