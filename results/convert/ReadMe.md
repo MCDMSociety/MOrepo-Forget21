@@ -19,6 +19,8 @@ A csv file (resultsMain.csv) contains general results for each instances. Each r
   - `configValSplit`: strategy for computing bounds on variables when branching. There are two configurations:
         * `med`: the median value of the variable among the vertices of the lower bound set is used.
         * `mofv`: the most often fractional value among the vertices of the lower bound set is chosen.
+        * `rand`: a random value is chosen between the minimal and maximal value of the variable among the vertices of the lower bound set.
+        * `mofvRevisited`: a revisited rule of `mofv`, where the average value is taken when only integer vertices exist in the lower bound set.
   - `solved`: 1 is the instance is solved within the time limit, 0 otherwise.
   - `YN`: number of non-dominated points.
   - `cpuTotal`: total cpu time.
