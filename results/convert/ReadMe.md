@@ -17,10 +17,12 @@ A csv file (resultsMain.csv) contains general results for each instances. Each r
         * `coneOB`: cone objective branching.
         * `fullOB`: full objective branching.
   - `configValSplit`: strategy for computing bounds on variables when branching. There are two configurations:
-        * `med`: the median value of the variable among the vertices of the lower bound set is used.
+        * `med`: the median value of the variable among the vertices of the lower bound set is used. If there are an even number of values, the highest middle value is chosen.
+        * `med2`: the median value of the variable among the vertices of the lower bound set is used. If there are an even number of values, the average of the two middle values is chosen.
         * `mofv`: the most often fractional value among the vertices of the lower bound set is chosen.
         * `rand`: a random value is chosen between the minimal and maximal value of the variable among the vertices of the lower bound set.
         * `mofvRevisited`: a revisited rule of `mofv`, where the average value is taken when only integer vertices exist in the lower bound set.
+        * `mofvRevisited2`: a revisited rule of `mofv`, where a random value is taken when only integer vertices exist in the lower bound set.
   - `solved`: 1 is the instance is solved within the time limit, 0 otherwise.
   - `YN`: number of non-dominated points.
   - `cpuTotal`: total cpu time.
@@ -59,6 +61,8 @@ A csv file (resultsMain.csv) contains general results for each instances. Each r
   - `avgFeasVtx`: (relevant for WLP only) average number of feasible vertices in the initial polyhedron extracted from the father node.
   - `avgNewFacets`: average number of facets generated when computing the linear relaxation at the given depth.
   - `avgVtxNoRay`: average number of vertices in the linear relaxation. This does not include extreme rays.
+  - `avgFacetsNoRay`: average number of facets that does not contain any extreme ray. This statistic is only available for `mofvRevisited2` and `med2` configuration. Problems with binary variables are called using `mofvRevisited2`.
+  - `avgNewFacetsNoRay`: average number of facets generated when computing the linear relaxation at a given depth, and that does not contain any extreme ray. This statistic is only available for `mofvRevisited2` and `med2` configuration. Problems with binary variables are called using `mofvRevisited2`.
   
   Second, in the UB folder, the best upper bound set known is given for each instance and configuration. Each file name is in the [instance]_[configLB]_[configValSplit].txt format. Each row corresponds to a specific feasible point (it is non-dominated for the problem if the corresponding instance and configuration was solved to optimality, cf resultsMain.csv). The columns in each of these files are:
   
