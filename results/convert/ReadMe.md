@@ -45,22 +45,22 @@ A csv file (resultsMain.csv) contains general results for each instances. Each r
   - `cpuNodeSel`: cpu time spent in chosing the next node to explore.
   - `cpuLbCopy`: cpu time spent in copying lower bound sets in children nodes
   
-  Detailed results are given for each instance and configuration in the statFiles folder. First, in the Depth folder, statistics in function of the depth of the tree can be found. Each file name is in the [instance]_[configLB]_[configValSplit].txt format. Each row corresponds to a specific depth of the tree. The columns in each of these files are:
+  Detailed results are given for each instance and configuration in the statFiles folder. First, in the Depth folder, statistics for the lower bound sets (and their corresponding polyhederon) can be found in function of the depth of the tree can be found. Each file name is in the [instance]_[configLB]_[configValSplit].txt format. Each row corresponds to a specific depth of the tree. The columns in each of these files are:
   
   - `depth`: depth of the tree studied. The root node is at depth 0.
   - `nbNodes`: number of nodes at the given depth.
   - `nbInfeas`: number of nodes fathomed by infeasibility at the given depth.
-  - `avgFacet`: average number of facets in the linear relaxation.
-  - `avgVertex`: average number of vertices in the linear relaxation. This includes extreme rays too.
-  - `minFacet`: minimum number of facets in the linear relaxation. Infeasible nodes are not taken into account.
-  - `minVertex`: minimum number of vertices in the linear relaxation. Infeasible nodes are not taken into account. This includes extreme rays too.
-  - `maxFacet`: maximum number of facets in the linear relaxation. Infeasible nodes are not taken into account.
-  - `maxVertex`: maximum number of vertices in the linear relaxation. Infeasible nodes are not taken into account. This includes extreme rays too.
+  - `avgFacet`: average number of facets in the polyhederon.
+  - `avgVertex`: average number of vertices in the polyhederon including extreme rays. Infeasible nodes are not taken into account.
+  - `minFacet`: minimum number of facets in the polyhederon. Infeasible nodes are not taken into account.
+  - `minVertex`: minimum number of vertices in the polyhederon including extreme rays. Infeasible nodes are not taken into account.
+  - `maxFacet`: maximum number of facets in the polyhederon. Infeasible nodes are not taken into account.
+  - `maxVertex`: maximum number of vertices in the polyhederon including extreme rays. Infeasible nodes are not taken into account.
   - `cpuUpdatePoly`: total cpu time spent in updating polyhedra at this depth. Expressed in seconds.
   - `cpuDepth`: total cpu time spent at the given depth. Expressed in seconds.
   - `avgFeasVtx`: (relevant for WLP only) average number of feasible vertices in the initial polyhedron extracted from the father node.
-  - `avgNewFacets`: average number of facets generated when computing the linear relaxation at the given depth.
-  - `avgVtxNoRay`: average number of vertices in the linear relaxation. This does not include extreme rays.
+  - `avgNewFacets`: average number of facets generated when computing the linear relaxation at the given depth (including facets with rays).
+  - `avgVtxNoRay`: average number of vertices in the lower bound set. This does not include extreme rays.
   - `avgFacetsNoRay`: average number of facets that does not contain any extreme ray. This statistic is only available for `mofvRevisited2` and `med2` configuration. Problems with binary variables are called using `mofvRevisited2`.
   - `avgNewFacetsNoRay`: average number of facets generated when computing the linear relaxation at a given depth, and that does not contain any extreme ray. This statistic is only available for `mofvRevisited2` and `med2` configuration. Problems with binary variables are called using `mofvRevisited2`.
   
