@@ -64,12 +64,12 @@ save_snippet <- function(name, str, path = here(pathOverLeaf, "snippets.tex"), a
 }
 ```
 
-```{r color scales, include=FALSE}
+```{r color scale palette used, include=FALSE}
 # https://cran.r-project.org/web/packages/ggsci/vignettes/ggsci.html
-mypal <- pal_npg("nrc", alpha = 0.7)(9)
-mypal <- pal_simpsons()(9)
-# mypal
 library("scales")
+mypal <- pal_npg("nrc", alpha = 0.8)(9)
+show_col(mypal)
+mypal <- pal_simpsons()(9)
 show_col(mypal)
 ```
 
@@ -134,7 +134,6 @@ datResult <- read_csv(here("results", "convert", "csv", "resultsMain.csv")) %>%
   select(-winner) %>% 
   unnest(c(data, win, win_bound)) 
 
-
 # results where at least on config solved the instance
 datResultSolvedI <- datResult %>% 
   group_by(instance_name) %>% 
@@ -155,6 +154,8 @@ datResultAllSolved <- datResult %>%
   unnest(data) 
 
 datLBStat <- read_csv(here("results/paper_tab_fig/lb_set.csv"))
+
+datOSS <- read_csv(here("results/convert/csv/resultsOSS.csv"))
 ```
 
 ## Test instances

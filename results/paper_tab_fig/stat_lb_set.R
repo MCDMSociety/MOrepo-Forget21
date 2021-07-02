@@ -18,10 +18,10 @@ dat <- tibble(path = paths) %>%
          configLB = str_replace(filename, "^(.*)_(.*?)_.*?$", "\\2"),
          configValSplit = str_replace(filename, "^(.*)_(.*?)_(.*?).txt$", "\\3"),
          p = as.numeric(str_replace(filename, "^.*?-(.*?)_(.*?)(_|-)(.)_.*$", "\\4")),
-        ) %>% print
+        ) 
 dat <- dat %>% #slice_head(n=2) %>% 
   filter(configValSplit %in% c("MOFVREVISITED2", "MED2")) %>% 
   mutate(data = map(path, getStat)) %>% 
   unnest(data)
 write_csv(dat, here("results/paper_tab_fig/lb_set.csv"))
-
+message("Saved lb_set.csv")

@@ -4,17 +4,27 @@ library(fs)
 library(here)
 library(tidyverse)
 
-getNDSet <- function(path) {
+getNDSet <- function(path, dropLast = T) {
   dat <- read_csv(path, col_types = cols())
-  return(dat)
+  if (dropLast) return(dat[,1:(ncol(dat)-1)]) else return(dat)
 }
 
-dat <- read_csv(here("results", "convert", "csv", "resultsMain.csv")) %>% 
-  mutate(instance_name = str_remove(instance, "....$"),
-         instance = instance_name,
-         class = str_replace(instance_name, "^.*?-(.*?)_(.*)", "\\1"),
-         alg_config = str_c("\\", configLB, "-\\", toupper(configValSplit))) %>% 
-  filter(solved == 1) %>% #filter(instance_name == "Forget21-PPP_10_3_1-100_1-100_1-2500_1_50_random_10_10") %>% 
+dat <- bind_rows(
+  read_csv(here("results", "convert", "csv", "resultsMain.csv")) %>% 
+    mutate(instance_name = str_remove(instance, "....$"),
+           instance = instance_name,
+           class = str_replace(instance_name, "^.*?-(.*?)_(.*)", "\\1"),
+           alg_config = str_c("\\", configLB, "-\\", toupper(configValSplit))),
+  read_csv(here("results/convert/csv/resultsOSS.csv"))  %>% 
+    mutate(instance_name = str_remove(instance, "...$"),
+           instance = instance_name,
+           class = str_replace(instance_name, "^.*?-(.*?)_(.*)", "\\1"),
+           alg_config = "\\OSS")
+)
+
+dat <- dat %>% 
+  filter(solved == 1) %>% #filter(instance_name == "Kirlik14-KP_p-3_n-10_ins-1") %>% 
+  select(instance_name, instance, configLB, configValSplit, alg_config) %>% 
   group_by(instance_name) %>% 
   filter(n() > 1) %>% 
   nest() %>%
@@ -22,12 +32,19 @@ dat <- read_csv(here("results", "convert", "csv", "resultsMain.csv")) %>%
   # slice_head(n=2) %>% 
   mutate(validated = map_lgl(data,  function(df) {
     for (i in 1:nrow(df)) {
-      tmp <- getNDSet(here("results/convert/csv/statFiles/UB", str_c(df$instance[i], "_", df$configLB[i], "_", df$configValSplit[i], ".txt")))
+      if (df$alg_config[i] == "\\OSS") {
+        fn <- here("results/convert/csv/statFiles/UB", str_c(df$instance[i], "_OSS.txt"))
+        tmp <- getNDSet(fn, dropLast = F)
+      } else {
+        fn <- here("results/convert/csv/statFiles/UB", str_c(df$instance[i], "_", df$configLB[i], "_", df$configValSplit[i], ".txt"))
+        tmp <- getNDSet(fn)
+      }
+      print(tmp)
       if (i == 1) {
         nDSet = tmp
         next
       }
-      if (!setequal(nDSet[,1:(ncol(nDSet)-1)], tmp[,1:(ncol(tmp)-1)])) {
+      if (!setequal(nDSet, tmp)) {
         warning("Different nondominated sets for instance ", df$instance[i])
         return(FALSE)
       }
@@ -36,3 +53,4 @@ dat <- read_csv(here("results", "convert", "csv", "resultsMain.csv")) %>%
   }))
 which(!dat$validated)
 warnings()
+message("Validation of ND sets finished")
