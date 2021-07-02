@@ -67,4 +67,13 @@ A csv file (resultsMain.csv) contains general results for each instances. Each r
   Second, in the UB folder, the best upper bound set known is given for each instance and configuration. Each file name is in the [instance]_[configLB]_[configValSplit].txt format. Each row corresponds to a specific feasible point (it is non-dominated for the problem if the corresponding instance and configuration was solved to optimality, cf resultsMain.csv). The columns in each of these files are:
   
   - `obj`k: value of objective k. There is one column per objective, which results in p columns.
-  - `cpu`: cpu time (in seconds) at which the point was found.
+  - `cpu`: cpu time (in seconds) at which the point was found. This is not available for the OSS algorithm.
+  
+  Finally, a csv file (resultsOSS.csv) contains statistics for the OSS algorithm. Each row corresponds to one instance. The columns are:
+  
+  - `instance`: name of the instances soved. Note that instances in .lp format are used.
+  - `p`: number of objectives.
+  - `n`: number of variables.
+  - `solved`: 1 if the instances was solved in less than 3600 seconds, 0 otherwise. In the latter case, the run is stopped and the instance is unsolved.
+  - `cpu`: cpu time.
+  - `YN`: number of non-dominated points found.
