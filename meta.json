@@ -7,7 +7,7 @@
          "class": "Production planning",
          "objectives": 3,
          "tags": [ "ppp", "productionPlaningProblem"],
-         "format": [ "raw"],
+         "format": [ "fgt"],
          "desc": "Instances for the production planing problem with 3 objectives.",
          "creator" : "Nicolas Forget <nforget@econ.au.dk>"
       },
@@ -16,7 +16,7 @@
          "class": "Production planning",
          "objectives": 4,
          "tags": [ "ppp", "productionPlaningProblem"],
-         "format": [ "raw"],
+         "format": [ "fgt"],
          "desc": "Instances for the production planing problem with 4 objectives.",
          "creator" : "Nicolas Forget <nforget@econ.au.dk>"
       },
@@ -25,7 +25,7 @@
          "class": "Production planning",
          "objectives": 5,
          "tags": [ "ppp", "productionPlaningProblem"],
-         "format": [ "raw"],
+         "format": [ "fgt"],
          "desc": "Instances for the production planing problem with 5 objectives.",
          "creator" : "Nicolas Forget <nforget@econ.au.dk>"
       },
@@ -34,7 +34,7 @@
          "class": "Facility location",
          "objectives": 3,
          "tags": [ "uflp", "uncapacitatedFacilityLocationProblem"],
-         "format": [ "raw"],
+         "format": [ "fgt"],
          "desc": "Instances for the uncapacitated facility location problem with 3 objectives.",
          "creator" : "Nicolas Forget <nforget@econ.au.dk>"
       },
@@ -43,7 +43,7 @@
          "class": "Facility location",
          "objectives": 4,
          "tags": [ "uflp", "uncapacitatedFacilityLocationProblem"],
-         "format": [ "raw"],
+         "format": [ "fgt"],
          "desc": "Instances for the uncapacitated facility location problem with 4 objectives.",
          "creator" : "Nicolas Forget <nforget@econ.au.dk>"
       },
@@ -52,7 +52,7 @@
          "class": "Facility location",
          "objectives": 5,
          "tags": [ "uflp", "uncapacitatedFacilityLocationProblem"],
-         "format": [ "raw"],
+         "format": [ "fgt"],
          "desc": "Instances for the uncapacitated facility location problem with 5 objectives.",
          "creator" : "Nicolas Forget <nforget@econ.au.dk>"
       }
