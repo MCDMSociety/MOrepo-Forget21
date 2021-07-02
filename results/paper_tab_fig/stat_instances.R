@@ -8,8 +8,10 @@ try(setwd(rstudioapi::getActiveProject()))
 
 # Statistics for a single instance
 getStat <- function(path) {
+  print(path)
   v <- read_file(path) %>% str_split("\\n\\n") 
   v <- v[[1]]
+  v[4] <- str_c(v[4], "\n")
   coeff <- t(read_delim(v[3], " ", col_names = F)) %>% as_tibble(.name_repair = "unique")
   ranges <- t(read_delim(v[6], " ", col_names = F)) %>% as_tibble(.name_repair = "unique") %>% filter(...2 > 1)
   set <- addNDSet(coeff)
@@ -20,13 +22,14 @@ getStat <- function(path) {
            range_int_min = min(ranges$...1), range_int_max = max(ranges$...2))
   return(dat)
 }
-getStat(path = "instances/raw/PPP/3obj/Forget21-PPP_10_3_1-100_1-100_1-2500_1_50_random_10_10.raw")
+getStat(path = "../MOrepo-Kirlik14/instances/fgt/KP/3obj/Kirlik14-KP_p-3_n-100_ins-1.fgt")
+getStat(path = "instances/raw/PPP/3obj/Forget21-PPP_10_3_1-100_1-100_1-2500_1_50_random_1_1.raw")
 
-paths <- c(dir_ls("instances", recurse = T, type = "file"), 
-           dir_ls("../MOrepo-Kirlik14/instances", recurse = T, type = "file"))
+paths <- c(dir_ls("instances/fgt", recurse = T, type = "file"), 
+           dir_ls("../MOrepo-Kirlik14/instances/fgt", recurse = T, type = "file"))
 dat <- tibble(path = paths) %>%
   mutate(filename = path_file(path), 
-         instance_name = str_remove(filename, ".raw"), 
+         instance_name = str_remove(str_remove(filename, ".raw"), ".fgt"), 
          class = str_replace(instance_name, "^.*?-(.*?)_(.*)", "\\1")) 
 dat <- dat %>% #head(dat) %>% 
   mutate(map_dfr(path, getStat)) 

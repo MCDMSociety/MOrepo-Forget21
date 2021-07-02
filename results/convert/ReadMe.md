@@ -58,7 +58,7 @@ A csv file (resultsMain.csv) contains general results for each instances. Each r
   - `maxVertex`: maximum number of vertices in the polyhederon including extreme rays. Infeasible nodes are not taken into account.
   - `cpuUpdatePoly`: total cpu time spent in updating polyhedra at this depth. Expressed in seconds.
   - `cpuDepth`: total cpu time spent at the given depth. Expressed in seconds.
-  - `avgFeasVtx`: (relevant for WLP only) average number of feasible vertices in the initial polyhedron extracted from the father node.
+  - `avgFeasVtx`: (relevant for WLP only) average number of feasible vertices and extreme rays in the initial polyhedron extracted from the father node.
   - `avgNewFacets`: average number of facets generated when computing the linear relaxation at the given depth (including facets with rays).
   - `avgVtxNoRay`: average number of vertices in the lower bound set. This does not include extreme rays.
   - `avgFacetsNoRay`: average number of facets that does not contain any extreme ray. This statistic is only available for `mofvRevisited2` and `med2` configuration. Problems with binary variables are called using `mofvRevisited2`.
