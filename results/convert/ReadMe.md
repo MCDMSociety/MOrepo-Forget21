@@ -77,3 +77,5 @@ A csv file (resultsMain.csv) contains general results for each instances. Each r
   - `solved`: 1 if the instances was solved in less than 3600 seconds, 0 otherwise. In the latter case, the run is stopped and the instance is unsolved.
   - `cpu`: cpu time.
   - `YN`: number of non-dominated points found.
+  
+  A csv file (resultsUbWarmstart.csv) provides the same statistics as in resultsMain.csv. The difference is that the upper bound set is here wamstarted with the non-dominated set. Ub and Depth statistics are generated too, with the identifier UB_WARMSTART.
