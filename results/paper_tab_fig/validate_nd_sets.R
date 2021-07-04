@@ -23,7 +23,7 @@ dat <- bind_rows(
 )
 
 dat <- dat %>% 
-  filter(solved == 1) %>% #filter(instance_name == "Kirlik14-KP_p-3_n-10_ins-1") %>% 
+  filter(solved == 1) %>% filter(instance_name == "Forget21-PPP_11_4_1-100_1-100_1-2500_1_50_random_10_10") %>% 
   select(instance_name, instance, configLB, configValSplit, alg_config) %>% 
   group_by(instance_name) %>% 
   filter(n() > 1) %>% 
@@ -39,7 +39,7 @@ dat <- dat %>%
         fn <- here("results/convert/csv/statFiles/UB", str_c(df$instance[i], "_", df$configLB[i], "_", df$configValSplit[i], ".txt"))
         tmp <- getNDSet(fn)
       }
-      print(tmp)
+      # print(tmp)
       if (i == 1) {
         nDSet = tmp
         next

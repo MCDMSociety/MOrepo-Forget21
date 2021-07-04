@@ -8,6 +8,9 @@ library(here)
 #### Generate lb_set.csv with statistics about the lower bound sets ####
 source(here("results/paper_tab_fig/stat_lb_set.R"))
 
+#### Find cpu of last ND point ####
+source(here("results/paper_tab_fig/stat_last_nd_point.R"))
+
 #### Validate that ND sets the same for all runs ####
 source(here("results/paper_tab_fig/validate_nd_sets.R"))
 
