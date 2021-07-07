@@ -63,6 +63,7 @@ A csv file (resultsMain.csv) contains general results for each instances. Each r
   - `avgVtxNoRay`: average number of vertices in the lower bound set. This does not include extreme rays.
   - `avgFacetsNoRay`: average number of facets that does not contain any extreme ray. This statistic is only available for `mofvRevisited2` and `med2` configuration. Problems with binary variables are called using `mofvRevisited2`.
   - `avgNewFacetsNoRay`: average number of facets generated when computing the linear relaxation at a given depth, and that does not contain any extreme ray. This statistic is only available for `mofvRevisited2` and `med2` configuration. Problems with binary variables are called using `mofvRevisited2`.
+  - `avgIntegerVtx`: average number of integer vertices in the linear relaxation at each depth.
   
   Second, in the UB folder, the best upper bound set known is given for each instance and configuration. Each file name is in the [instance]_[configLB]_[configValSplit].txt format. Each row corresponds to a specific feasible point (it is non-dominated for the problem if the corresponding instance and configuration was solved to optimality, cf resultsMain.csv). The columns in each of these files are:
   
