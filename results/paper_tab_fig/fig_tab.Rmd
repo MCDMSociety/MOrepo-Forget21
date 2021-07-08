@@ -53,7 +53,7 @@ library(ggthemes)
 library(rmarkdown)
 here::i_am(path = "results/paper_tab_fig/fig_tab.Rmd")
 pathOverLeaf <- "/Users/au15463/Dropbox/Apps/Overleaf/LP_relax_based_BB"
-pathOverLeaf <- here("results", "paper_tab_fig", "latex")    # change to a folder where you want the LaTeX files. The current should work
+#pathOverLeaf <- here("results", "paper_tab_fig", "latex")    # change to a folder where you want the LaTeX files. The current should work
 copyTabFigs <- FALSE   # copy to Overleaf
 if (isTRUE(getOption('knitr.in.progress'))) copyTabFigs <- TRUE 
 ```
@@ -269,7 +269,7 @@ table <- table %>%
                       str_c("\\#", footnote_marker_alphabet(6))
                       # str_c("$|\\YN|$", footnote_marker_alphabet(7))
                     ),
-        caption = "Instances used and average number of non-dominated points.") %>% 
+        caption = str_c("Instances used and average number of non-dominated points (", nrow(datInput), " instances in total).")) %>% 
   kable_styling(latex_table_env = "tabularx") %>%
   # kable_styling(latex_options = "scale_down") %>%
   footnote(alphabet = c("Number of objectives.", 
@@ -807,7 +807,7 @@ dat2 <- datResult %>%
   ) %>% print()
 str <- str_glue("In this section, we take a closer look at different parts of \\autoref{{alg:BB}}. Different speed-up factors by using \\WLP instead of \\LP are given in \\autoref{{tab:factorLB}}. The factor is obtained by dividing the \\LP value with the \\WLP value. Only instances with both configurations solved are recorded. \\WLP are on average {res1} times faster than \\LP with significant differences among the problem classes, \\eg for problem class UFLP, \\WLP is on average {res2} times faster while for class ILP the speed-up is {res3}.
                 
-Most of the CPU time ({res4a}\\% for \\LP and {res4b}\\% for \\WLP) is used on calculating the lower bound set (\\autoref{{alg:benson}}) and the speed-up is mainly due to a reduction in the number of times the linear programming solver has to be called on \\autoref{{l:checkV}} in \\autoref{{alg:benson}}. This can be seen in \\autoref{{tab:factorLB}}. For example, for UFLP \\WLP is {res2} times faster and solved {res5} times less linear programs on average than \\LP. However, when using \\WLP the initial outer approximation has to be copied from the father node into the child node and managing the polyhedron is harder since we have to check for redundant half-spaces in \\autoref{{alg:updateP}} (lines \\ref{{l:sRemoveH}}-\\ref{{l:eRemoveH}}). As a result we have a smaller reduction in CPU times than the reduction in number of LPs solved.",
+Most of the CPU time ({res4a}\\% for \\LP and {res4b}\\% for \\WLP) is used on calculating the lower bound set (\\autoref{{alg:benson}}) and the speed-up is mainly due to a reduction in the number of times the linear programming solver has to be called on \\autoref{{l:checkV}} in \\autoref{{alg:benson}}. This can be seen in \\autoref{{tab:factorLB}}. For example, for UFLP \\WLP is {res2} times faster and solves {res5} times less linear programs on average than \\LP. However, when using \\WLP the initial outer approximation has to be copied from the father node into the child node and managing the polyhedron is harder since we have to check for redundant half-spaces in \\autoref{{alg:updateP}} (lines \\ref{{l:sRemoveH}}-\\ref{{l:eRemoveH}}). As a result we have a smaller reduction in CPU times than the reduction in number of LPs solved.",
   res1 = round(mean(dat$avgSpeedup), 2),
   res2 = round(dat %>% filter(class == "UFLP") %>% pull(avgSpeedup) %>% mean(), 2),
   res3 = round(dat %>% filter(class == "ILP") %>% pull(avgSpeedup) %>% mean(), 2),
@@ -1108,7 +1108,75 @@ if (copyTabFigs) {
   print(p)
   dev.off()
 }
+
+p <- dat %>% 
+  filter(solved == 1) %>%
+  filter(setequal(alg_config, c("\\texttt{\\small WLP-UB}", "\\texttt{\\small WLP}"))) %>% 
+  mutate(
+    nbLeaf = nbFathomedInfeas + nbFathomedOptimality + nbFathomedDominance,
+    pctFathomedInfeas = nbFathomedInfeas/nbLeaf,
+    pctFathomedOptimality = nbFathomedOptimality/nbLeaf,
+    pctFathomedDominance = nbFathomedDominance/nbLeaf
+  ) %>%
+  group_by(p, class, alg_config) %>%
+  summarise(across(starts_with("pct"), mean)) %>% 
+  rename(infeasibility = pctFathomedInfeas, 
+         optimality = pctFathomedOptimality, 
+         dominance = pctFathomedDominance) %>% 
+  pivot_longer(!c(class, p, alg_config) , names_to = "part" , values_to = "pctCpu") %>%
+  mutate(pctCpu = 100 * pctCpu,
+         class = if_else(str_detect(alg_config, "UB"), str_c(class, "-", "UB"), class)) %>% 
+  ggplot(aes(
+    x = factor(class),
+    y = pctCpu,
+    fill = part
+  )) +
+  geom_col(color = "black") +
+  geom_text(
+    aes(label = round(pctCpu, 1)),
+    colour = "white",
+    size = 2.5,
+    position = position_stack(vjust = .5)
+  ) +
+  facet_grid(
+    cols = vars(p),
+    # scales = "free"
+  ) +
+  labs(color = "", fill = "") +
+  ylab("percent of leaf nodes") + xlab("") +
+  theme_publish() 
+p
 ```
+
+
+```{r}
+dat <- datResultSolvedI %>% 
+  filter(configValSplit %in% c("mofv", "binary"), configLB == "WLP", solved == 1) %>% 
+  bind_rows(datUBStart) %>% 
+  mutate(alg_config = if_else(str_detect(alg_config, "UB"), "WLPUB", "WLP")) %>% 
+  mutate(p = str_c("$p = ", p, "$"),) %>% 
+  group_by(instance_name) %>% 
+  filter(n() == 2) %>% 
+  select(instance_name, class, p, alg_config, cpuTotal, nbNodes) %>% 
+  pivot_wider(names_from = alg_config, values_from = c(cpuTotal, nbNodes)) %>% 
+  ungroup() %>% 
+  mutate(fct = cpuTotal_WLP/cpuTotal_WLPUB, 
+         pct = 100*(cpuTotal_WLP-cpuTotal_WLPUB)/cpuTotal_WLP,
+         pctInc = 100*(cpuTotal_WLP-cpuTotal_WLPUB)/cpuTotal_WLPUB,
+         pctNodes = 100*(nbNodes_WLP-nbNodes_WLPUB)/nbNodes_WLPUB) %>% 
+  group_by(p, class) %>% 
+  summarise(across(where(is.double), mean)) 
+
+str <- str_glue("As can be seen from \\autoref{{fig:ub-leaf}} the reduction in CPU time is significant. On average over all the instances the speed-up factor is {res1} meaning that on average, not providing an optimal solution at the root node, makes the cpu time increase with {res2}\\%.
+                
+As there is no significant computation time involved in generating solutions in our branch-and-bound algorithm (feasible solutions are simply harvested from integer feasible vertices of the lower bound sets), the speed-up must come from the increased pruning potential. The number of nodes in the branching tree on average increase with {res3}\\% for \\WLP. Note also, that in the \\WLPUB configuration, the algorithm still check whether each integer feasible vertex of the lower bound sets found should enter the upper bound set, which underlines the fact that the reduction in computation time comes from the increased pruning potential.",
+  res1 = round(mean(dat$fct), 2),
+  res2 = round(mean(dat$pctInc)),
+  res3 = round(mean(dat$pctNodes))
+) 
+save_snippet("snipOptimalityA", str)
+```
+
 
 
 ## Performance of the multi-objective B\&B algorithm compared to an objective space search algorithm
