@@ -23,7 +23,7 @@ dat <- bind_rows(
 )
 
 dat <- dat %>% 
-  filter(solved == 1) %>% filter(instance_name == "Forget21-PPP_11_4_1-100_1-100_1-2500_1_50_random_10_10") %>% 
+  filter(solved == 1) %>% #filter(instance_name == "Forget21-PPP_11_4_1-100_1-100_1-2500_1_50_random_10_10") %>% 
   select(instance_name, instance, configLB, configValSplit, alg_config) %>% 
   group_by(instance_name) %>% 
   filter(n() > 1) %>% 
@@ -31,6 +31,7 @@ dat <- dat %>%
   ungroup() %>% 
   # slice_head(n=2) %>% 
   mutate(validated = map_lgl(data,  function(df) {
+    # print(df)
     for (i in 1:nrow(df)) {
       if (df$alg_config[i] == "\\OSS") {
         fn <- here("results/convert/csv/statFiles/UB", str_c(df$instance[i], "_OSS.txt"))

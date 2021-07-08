@@ -14,6 +14,13 @@ paths <- dir_ls(here("results/convert/csv/statFiles/Depth"), recurse = T, type =
 dat <- tibble(path = paths) %>%
   mutate(filename = path_file(path),
          instance_name = str_replace(filename, "^(.*)_.*?_.*?$", "\\1"),
+         n = case_when(
+           str_detect(instance_name, "Kirlik") ~ str_replace(instance_name, "^.*n-(.*?)_(.*)", "\\1"),
+           TRUE ~ str_replace(instance_name, "^.*?-(.*?)_(.*?)_.*", "\\2")
+         ),
+         n = as.numeric(n),
+         n = if_else(str_detect(instance_name, "UFLP"), n*(n+1), n),
+         n = if_else(str_detect(instance_name, "PPP"), n*3, n),
          class = str_replace(instance_name, "^.*?-(.*?)_(.*)", "\\1"),
          configLB = str_replace(filename, "^(.*)_(.*?)_.*?$", "\\2"),
          configValSplit = str_replace(filename, "^(.*)_(.*?)_(.*?).txt$", "\\3"),

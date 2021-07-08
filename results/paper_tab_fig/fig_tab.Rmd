@@ -53,14 +53,19 @@ library(ggthemes)
 library(rmarkdown)
 here::i_am(path = "results/paper_tab_fig/fig_tab.Rmd")
 pathOverLeaf <- "/Users/au15463/Dropbox/Apps/Overleaf/LP_relax_based_BB"
+pathOverLeaf <- here("results", "paper_tab_fig", "latex")    # change to a folder where you want the LaTeX files. The current should work
 copyTabFigs <- FALSE   # copy to Overleaf
 if (isTRUE(getOption('knitr.in.progress'))) copyTabFigs <- TRUE 
 ```
 
 ```{r snippet function}
-save_snippet <- function(name, str, path = here(pathOverLeaf, "snippets.tex"), append = T) {
-  str <- str_c("\\newcommand{\\", name, "}{", str, "}\n")
-  write_lines(str, path, append = append)
+save_snippet <- function(name = NULL, str, path = here(pathOverLeaf, "snippets.tex"), append = T, comment = F) {
+  if (comment) {
+    write_lines(str, path, append = append)
+  } else {
+    str <- str_c("\\newcommand{\\", name, "}{", str, "}\n")
+    write_lines(str, path, append = append) 
+  }
 }
 ```
 
@@ -69,10 +74,10 @@ save_snippet <- function(name, str, path = here(pathOverLeaf, "snippets.tex"), a
 library("scales")
 mypal <- pal_npg("nrc", alpha = 0.8)(9)
 show_col(mypal)
-mypal <- pal_simpsons()(9)
+mypal <- pal_simpsons()(14)
 show_col(mypal)
-mypal <- brewer.pal(n = 11, name = "RdYlBu")
-show_col(mypal)
+# mypal <- brewer.pal(n = 14, name = "RdYlBu")
+# show_col(mypal)
 mypal <- c("#74ADD1", "#A50026", "#46732EFF", "#E64B35CC")
 ```
 
@@ -120,15 +125,14 @@ scale_linetype_bound <- scale_linetype_manual(values=c("solid", "solid", "dashed
 
 ```{r load data}
 datInput <- read_csv(here("results", "paper_tab_fig", "instances.csv")) %>% 
-  filter(!(class == "KP" & n > 40 & p == 3))
+  filter(!(class == "KP" & n > 40 & p == 3)) 
 
-datResult <- read_csv(here("results", "convert", "csv", "resultsMain.csv")) %>% 
+datResult <- read_csv(here("results", "convert", "csv", "resultsMain.csv")) %>%
     mutate(instance_name = str_remove(instance, "....$"))
 datLastNDCpu <- read_csv(here("results", "paper_tab_fig", "stat_last_nd.csv"))
 datResult <- left_join(datResult, datLastNDCpu) %>% 
   group_by(instance_name) %>% 
   filter(setequal(intersect(c("WLP", "LP"), configLB), c("WLP", "LP")))  # only instances with results for both LP and WLP
-
 
 rules <- c("med2", "rand", "mofvRevisited2")  # rules to compare
 datResult <- datResult %>%
@@ -152,7 +156,16 @@ datResult <- datResult %>%
   unnest(c(data, win, win_bound)) %>% 
   group_by(instance_name, n, class, p, configLB, configValSplit, alg_config, win, win_bound) %>% 
   summarise(across(where(is.double), mean)) %>% 
-  ungroup()
+  ungroup() %>% #print() %>% 
+  group_by(instance_name) %>% 
+  filter(!(configLB == "WLP" & configValSplit != "binary" & length(unique(configValSplit)) < 3))   # remove instances not solved for all configs
+  
+  dat <- datResult %>% #filter(instance_name == "Kirlik14-ILP_p-3_n-30_m-15_ins-3") %>%
+  filter(configValSplit %in% rules) %>% 
+  filter(configLB == "WLP") %>% 
+  group_by(instance_name) %>% 
+  filter(setequal(unique(configValSplit), rules)) %>%    # only instances with results for for all rules
+  mutate(configValSplit = toupper(configValSplit))
 
 # results where at least on config solved the instance
 datResultSolvedI <- datResult %>% 
@@ -304,16 +317,18 @@ p <- ggplot(aes(x = n, y = nd), data = dat) +
   scale_alpha_solved 
 p
 if (copyTabFigs) {
-  tikz(file = here(pathOverLeaf, "fig_nd.tex"), standAlone=F, width = 7, height = 4)
+  tikz(file = here(pathOverLeaf, "fig_nd.tex"), standAlone=F, width = 7, height = 5)
   print(p)
   dev.off()
 }
 ```
 
 ```{r}
-str <- str_glue("\\comment[id=LRN]{{Generated using R. Don't modify here.}}In \\autoref{{fig:nd}} the number of non-dominated points are given for each instance. We have increased the variable size for each problem class until the size becomes so large that some instances cannot be solved within the time limit. The instances which have not been solved to optimality ({res}\\%) are illustrated with transparent points. In general the number of non-dominated points grow with variable size ($n$) and number of objectives ($p$). Note though that there may be a high variation for fixed $n$ and $p$. Moreover, the variation grows with $n$ and $p$. For UFLP the number of non-dominated points grows rapidly as a function of variable size which is due to the high percentage of objective coefficients not dominated by other coefficients.",
+str <- "% Generated from R code. Don't modify if you don't know what you are doing!"
+save_snippet(str = str, append = F, comment = T)
+str <- str_glue("In \\autoref{{fig:nd}} the number of non-dominated points are given for each instance. We have increased the variable size for each problem class until the size becomes so large that some instances cannot be solved within the time limit. The instances which have not been solved to optimality ({res}\\%) are illustrated with transparent points. In general the number of non-dominated points grow with variable size ($n$) and number of objectives ($p$). Note though that there may be a high variation for fixed $n$ and $p$. Moreover, the variation grows with $n$ and $p$. For UFLP the number of non-dominated points grows rapidly as a function of variable size which is due to the high percentage of objective coefficients not dominated by other coefficients.",
               res = round(length(which(dat$solved != "solved"))/nrow(dat)*100))
-save_snippet("snipInstancesA", str, append = F)
+save_snippet("snipInstancesA", str)
 ```
 
 
@@ -333,14 +348,18 @@ datResult %>%
   pull(instance_name) %>% unique()
 ```
 
-Groups with unsolved instances and cpu:
+Groups with unsolved instances and max cpu:
 
 ```{r}
 datResult %>%
   group_by(class, p) %>% 
   summarise(ctr = length(which(solved == 0)),
             maxCpu = max(cpuTotal))
+```
 
+Detailed groups with unsolved instances and max cpu:
+
+```{r}
 datResult %>%
   group_by(class, p, configLB, configValSplit) %>% 
   summarise(ctr = length(which(solved == 0)),
@@ -354,19 +373,21 @@ Will be copied to Overleaf directly via DB:
 ```{r}
 dat <- datResult %>% 
   group_by(instance_name) %>% 
-  filter(setequal(intersect(c("WLP", "LP"), configLB), c("WLP", "LP")))
+  filter(setequal(intersect(c("WLP", "LP"), configLB), c("WLP", "LP"))) %>% 
+  mutate(p = str_c("$p = ", p, "$"))  
 
 p <- ggplot(dat, aes(x = n, y = cpuTotal, color = toupper(configValSplit), linetype = configLB)) +
   geom_point(size = 0.5) +
   geom_smooth(se = F, size = 0.5) +
-  facet_grid(rows = vars(class), cols = vars(p), scales = "free") + 
+  facet_grid(cols = vars(class), rows = vars(p), scales = "free") + 
   xlab("Variable size ($n$)") + ylab("CPU (seconds)") +
   labs(color = "", linetype = "", alpha = "") +
-  theme_publish()
+  theme_publish() +
+  scale_alpha_solved 
 p
 
 if (copyTabFigs) {
-  tikz(file = here(pathOverLeaf, "fig_cpu.tex"), standAlone=F, width = 7, height = 6)
+  tikz(file = here(pathOverLeaf, "fig_cpu.tex"), standAlone=F, width = 7, height = 4)
   print(p)
   dev.off()
 }
@@ -380,7 +401,8 @@ dat <- datResult %>%
   filter(setequal(intersect(c("WLP", "LP"), configLB), c("WLP", "LP"))) %>% 
   group_by(class, p, alg_config) %>%
   arrange(cpuTotal, .by_group = T) %>%
-  mutate(count = row_number(), 
+  mutate(p = str_c("$p = ", p, "$"),
+         count = row_number(), 
          total = n(), 
          pct = count/total, 
          configValSplit = toupper(configValSplit)) %>% 
@@ -390,7 +412,7 @@ p <- ggplot(dat) +
   # geom_step(aes(x=tpstotal, y=count, color = nodeselVarsel, linetype = OB)) +
   geom_step(aes(y=pct, x=cpuTotal, color = configValSplit, linetype = configLB), alpha = 0.75) +
   # geom_point(aes(y=..y.., x=cpuTotal, color = configLB, linetype = configValSplit), stat="ecdf", size = 0.5) +
-  facet_grid(rows = vars(class), cols = vars(p)) +
+  facet_grid(cols = vars(class), rows = vars(p)) +
   # ggtitle(str_c("Number of instances solved within a given CPU time")) +
   labs(color = "", linetype = "") +
   # scale_color_ob + #scale_linetype_nodesel_varsel +
@@ -399,7 +421,7 @@ p <- ggplot(dat) +
   coord_cartesian(expand = FALSE, ylim = c(0, NA), xlim = c(-10, 3595)) 
 p
 if (copyTabFigs) {
-  tikz(file = here(pathOverLeaf, "fig_pref_pct.tex"), standAlone=F, width = 7, height = 6)
+  tikz(file = here(pathOverLeaf, "fig_pref_pct.tex"), standAlone=F, width = 7, height = 4)
   print(p)
   dev.off()
 }
@@ -445,24 +467,22 @@ dat2 <- datResultSolvedI %>%
   mutate(win_wlp = str_detect(win, "WLP")) %>% 
   group_by(win_wlp) %>% 
   summarize(ctr = n()) %>% print()
-```
 
-```{r}
-str <- str_glue("\\comment[id=LRN]{{Generated using R. Don't modify here.}}First, we rank the configurations with respect to the average CPU time for all solved instances. The sequence from best to worst for the integer problems with non-binary variables (ILP and PPP) becomes {res1}, where the increase in percentages compared to the best configuration is given in parentheses. For the combinatorial problems (KP and UFLP), WLP performed on average {res2}\\% faster compared to \\LP. 
+str <- str_glue("First, we rank the configurations with respect to the average CPU time for all solved instances. The sequence from best to worst for the integer problems with non-binary variables (ILP and PPP) becomes {res1}, where the increase in percentages compared to the best configuration is given in parentheses. For the combinatorial problems (KP and UFLP), WLP performed on average {res2}\\% faster compared to \\LP. 
                 
-Second, a plot of the CPU time for each instance is given in \\autoref{{fig:cpu}}. Note the variation in CPU time for the 10 instances given each class and variable size. Warm-starting the computation (\\WLP) in general performs better than \\LP. On average \\WLP (using the best variable selection configuration) performed {res3}\\% faster compared to \\LP. This can also be seen in \\autoref{{fig:performanceProfiles}} illustrating the number of solved instances given a  CPU time limit. We have increased the variable size for each problem class until the size becomes so large that some instances cannot be solved within the time limit. That is, the number of instances solved before the time limit is below 100\\%.
+A plot of the CPU time for each instance is given in \\autoref{{fig:cpu}}. Note the variation in CPU time for the 10 instances given each class and variable size. Warm-starting the computation (\\WLP) in general performs better than \\LP. On average \\WLP (using the best variable selection configuration) performed {res3}\\% faster compared to \\LP. This can also be seen in \\autoref{{fig:performanceProfiles}} illustrating the number of solved instances given a  CPU time limit. We have increased the variable size for each problem class until the size becomes so large that some instances cannot be solved within the time limit. That is, the number of instances solved before the time limit is below 100\\%.
 
-In a few instances \\LP performed best (fastest in {res4}\\% of the instances).",
+In a few instances \\LP performed best (fastest in {res4}\\% of the instances). We will have a closer look at the reason for this in \\autoref{{sec:resDetails}}",
                 res1 = knitr::combine_words(str_c(datIP$alg_config, " (", datIP$pct, "\\%)")),
                 res2 = datComp$pct[2],
                 res3 = dat1$pct[2],
-                res4 = round(100 * dat2 %>% filter(!win_wlp) %>% pull(ctr)/sum(dat$ctr)))
+                res4 = round(100 * (dat2 %>% filter(!win_wlp) %>% pull(ctr)/sum(dat2$ctr))))
 save_snippet("snipAlgConfigA", str)
 ```
 
 
 
-```{r perf stat for text}
+```{r, eval=FALSE}
 str <- ""
 
 dat <- datResultSolvedI %>%
@@ -497,28 +517,35 @@ save_snippet("snipAlgConfigB", str)
 
 ## Variable selection - Rules for choosing the bound
 
-```{r pref bound}
+```{r}
 rules <- c("med", "rand", "mofv")  # rules to compare
 dat <- datResultSolvedI %>% #filter(instance_name == "Kirlik14-ILP_p-3_n-30_m-15_ins-3") %>%
   filter(configValSplit %in% rules) %>% 
   filter(configLB == "WLP") %>% 
   group_by(instance_name) %>% 
   filter(setequal(unique(configValSplit), rules))   # only instances with results for for all rules
-  
-# dat %>% 
-#   group_by(instance_name) %>% 
-#   filter(n() > 3) %>% view()
+```
 
+Group with cpu and nodes:
+
+```{r}
 dat %>%
   group_by(class, configValSplit) %>%
   summarize(instances = n(), cpu = mean(cpuTotal), nodes = mean(nbNodes)) %>%
   arrange(nodes)
+```
 
+Group with cpu and nodes:
+
+```{r}
 dat %>%
   group_by(configValSplit) %>%
   summarize(instances = n(), cpu = mean(cpuTotal), nodes = mean(nbNodes)) %>%
-  arrange(nodes) 
+  arrange(nodes)
+```
 
+
+```{r}
 dat <- dat %>% ungroup() %>% 
   group_by(instance_name) %>% 
   arrange(cpuTotal, .by_group = T) %>% 
@@ -535,10 +562,13 @@ dat <- dat %>% ungroup() %>%
   ungroup() %>% 
   slice_head(n = 1) 
 str <- str_glue(
-  "\\comment[id=LRN]{{Generated using R. Don't modify here.}}We are here interested in determining whether one rule for finding the bound ({res1}) is consistently better than the other when considering non-binary integer problems. Since the effect on the branching tree of using \\LP vs \\WLP is negligible, we will consider the \\WLP configuration here. By considering the performance profiles in \\autoref{{fig:performanceProfiles}} we see that there is no clear winner among {res1}. 
+  "We are here interested in determining whether one rule for finding the bound ({res1}) is consistently better than the other when considering non-binary integer problems. Since the effect on the branching tree of using \\LP vs \\WLP is negligible, we will consider the \\WLP configuration here. By considering the performance profiles in \\autoref{{fig:performanceProfiles}} we see that there is no clear winner among {res1}. 
   
-The {dat$win_bound}-configuration performed best in {dat$ctr_pct}\\% of the instances. If we compare with the second best rule for each instance, the CPU time on average increased with {round(mean(dat$diff))} seconds (a {round(100*mean(dat$pct))}\\% increase).",
-  res1 = knitr::combine_words(toupper(rules))
+The {res2}-configuration performed best in {dat$ctr_pct}\\% of the instances. If we compare with the second best rule for each instance, the CPU time on average increased with {res3} seconds (a {res4}\\% increase).",
+  res1 = knitr::combine_words(toupper(str_c("\\", rules))),
+  res2 = str_c("\\", dat$win_bound),
+  res3 = round(dat$diff),
+  res4 = round(dat$pct)
   )
 save_snippet("snipBoundA", str)
 ```
@@ -550,26 +580,27 @@ save_snippet("snipBoundA", str)
 Will be copied to Overleaf directly via DB:
 
 ```{r CPU plot}
-dat <- datResult %>% #filter(instance_name == "Kirlik14-ILP_p-3_n-30_m-15_ins-3") %>%
+dat <- datResultAllSolved %>% #filter(instance_name == "Kirlik14-ILP_p-3_n-30_m-15_ins-3") %>%
   filter(configValSplit %in% rules) %>% 
   filter(configLB == "WLP") %>% 
   group_by(instance_name) %>% 
   filter(setequal(unique(configValSplit), rules)) %>%    # only instances with results for for all rules
-  mutate(configValSplit = toupper(configValSplit))
+  mutate(configValSplit = toupper(configValSplit)) %>% 
+  mutate(p = str_c("$p = ", p, "$"))  
          
-p <- ggplot(aes(x = n, y = cpuTotal, color = configValSplit), data = dat) +
-  geom_point(size = 0.5) +
+p <- ggplot(aes(x = n, y = nbNodes, color = configValSplit), data = dat) +
+  # geom_point(size = 0.5) +
   geom_smooth(se = F, size = 0.5) +
-  facet_grid(rows = vars(class), cols= vars(p), scales = "free", space = "free") +
+  facet_grid(rows = vars(class), cols= vars(p), scales = "free") +
   # ggtitle(str_c("Number of instances solved within a given CPU time")) +
   labs(color = "", linetype = "") +
   # scale_color_ob + #scale_linetype_nodesel_varsel +
-  xlab("Number of variables") + ylab("Cpu (seconds)") +
+  xlab("Number of variables") + ylab("Nodes in the branching tree") +
   theme_publish() 
   # coord_cartesian(expand = FALSE, ylim = c(0, NA), xlim = c(-10, NA))
 p
 if (copyTabFigs) {
-  tikz(file = here(pathOverLeaf, "fig_bound.tex"), standAlone=F, width = 7, height = 5)
+  tikz(file = here(pathOverLeaf, "fig_bound.tex"), standAlone=F, width = 7, height = 3)
   print(p)
   dev.off()
 }
@@ -661,23 +692,24 @@ if (copyTabFigs) {
 Will be copied to Overleaf directly via DB:
 
 ```{r factor lp/wlp table}
-dat <- datResultSolvedI %>% 
-  filter(configValSplit == "mofv" | class == "UFLP" | class == "KP") %>% 
+dat <- datResult %>% 
+  filter(configValSplit == "mofv" | configValSplit == "binary") %>% 
   group_by(instance_name) %>%
+  filter(setequal(c("WLP", "LP"), configLB)) %>% 
   nest() %>% 
   mutate(sol = map(data, function(df) {all(df$solved == 1)})) %>% 
   unnest(sol) %>% 
   filter(sol) %>% # remove instances with unsolved configs
   select(-sol) %>% 
   unnest(data) %>% 
-  select(instance_name, configLB, cpuTotal, nbLpSolved, nbNodes, class, p) %>%
+  select(instance_name, configLB, cpuTotal, nbLpSolved, class, p) %>%
   group_by(instance_name) %>%
-  pivot_wider(names_from = configLB, values_from = c(cpuTotal, nbLpSolved, nbNodes), values_fn = mean) %>% 
+  pivot_wider(names_from = configLB, values_from = c(cpuTotal, nbLpSolved)) %>%
   ungroup() %>%
   group_by(class, p) %>%
   summarise(avgSpeedup = mean(cpuTotal_LP/cpuTotal_WLP), avgLP = mean(nbLpSolved_LP/nbLpSolved_WLP)) %>%
   ungroup() %>%
-  pivot_wider(names_from = p, values_from = c(avgSpeedup, avgLP))
+  pivot_wider(names_from = p, values_from = c(avgSpeedup, avgLP)) %>% print
 
 dat %>% kable(format = "html")
 table <- dat %>% 
@@ -708,23 +740,56 @@ if (copyTabFigs) {
 ```
 
 ```{r detailed text}
-dat <- datResultSolvedI %>% 
-  filter(configValSplit == "mofv" | class == "UFLP") %>% 
+dat <- datResult %>% 
+  filter(configValSplit == "mofv" | configValSplit == "binary") %>% 
   group_by(instance_name) %>%
+  filter(setequal(c("WLP", "LP"), configLB)) %>% 
   nest() %>% 
   mutate(sol = map(data, function(df) {all(df$solved == 1)})) %>% 
   unnest(sol) %>% 
   filter(sol) %>% # remove instances with unsolved configs
   select(-sol) %>% 
   unnest(data) %>% 
-  select(instance_name, configLB, cpuTotal, nbLpSolved, nbNodes, class, p) %>%
+  select(instance_name, configLB, cpuTotal, nbLpSolved, class, p, n) %>%
   group_by(instance_name) %>%
-  pivot_wider(names_from = configLB, values_from = c(cpuTotal, nbLpSolved, nbNodes), values_fn = mean) %>% 
+  pivot_wider(names_from = configLB, values_from = c(cpuTotal, nbLpSolved)) %>%
+  ungroup() %>%
+  group_by(class, p, n) %>%
+  summarise(avgSpeedup = mean(cpuTotal_LP/cpuTotal_WLP), avgLP = mean(nbLpSolved_LP/nbLpSolved_WLP)) 
+
+ggplot(dat, aes(x = n, y = avgSpeedup, color = factor(p))) + 
+  geom_point() +
+  geom_line() +
+  facet_grid(rows = vars(class))
+
+dat <- datResult %>% 
+  filter(configValSplit == "mofv" | configValSplit == "binary") %>% 
+  group_by(instance_name) %>%
+  filter(setequal(c("WLP", "LP"), configLB)) %>% 
+  nest() %>% 
+  mutate(sol = map(data, function(df) {all(df$solved == 1)})) %>% 
+  unnest(sol) %>% 
+  filter(sol) %>% # remove instances with unsolved configs
+  select(-sol) %>% 
+  unnest(data) %>% 
+  select(instance_name, configLB, cpuTotal, nbLpSolved, class, p, n) %>%
+  group_by(instance_name) %>%
+  pivot_wider(names_from = configLB, values_from = c(cpuTotal, nbLpSolved)) %>%
   ungroup() %>%
   group_by(class, p) %>%
-  summarise(avgSpeedup = mean(cpuTotal_LP/cpuTotal_WLP), avgLP = mean(nbLpSolved_LP/nbLpSolved_WLP))
-dat2 <- datResult %>%
-  filter(configValSplit == "mofv" | class == "UFLP", solved == 1) %>%
+  summarise(avgSpeedup = mean(cpuTotal_LP/cpuTotal_WLP), avgLP = mean(nbLpSolved_LP/nbLpSolved_WLP)) 
+
+
+dat2 <- datResult %>% 
+  filter(configValSplit == "mofv" | configValSplit == "binary") %>% 
+  group_by(instance_name) %>%
+  filter(setequal(c("WLP", "LP"), configLB)) %>% 
+  nest() %>% 
+  mutate(sol = map(data, function(df) {all(df$solved == 1)})) %>% 
+  unnest(sol) %>% 
+  filter(sol) %>% # remove instances with unsolved configs
+  select(-sol) %>% 
+  unnest(data) %>% 
   mutate(
     pctLB = 100 * cpuLbComputation / cpuTotal ,
     pctUB = 100 * cpuUbUpdate / cpuTotal ,
@@ -739,10 +804,10 @@ dat2 <- datResult %>%
     `Updating UB` = mean(pctUB) ,
     `Pruning nodes` = mean(pctDomiTest) ,
     Other = mean(pctOther) + mean(pctNodeSel) + mean(pctVarSel)
-  )
-str <- str_glue("\\comment[id=LRN]{{Generated using R. Don't modify here.}}In this section, we take a closer look at different parts of \\autoref{{alg:BB}}. Different speed-up factors by using \\WLP instead of \\LP are given in \\autoref{{tab:factorLB}}. The factor is obtained by dividing the \\LP value with the \\WLP value. Only instances with both configurations solved are recorded. \\WLP are on average {res1} times faster than \\LP with significant differences among the problem classes, \\eg for problem class UFLP, \\WLP is on average {res2} times faster while for class ILP the speed-up is {res3}.
+  ) %>% print()
+str <- str_glue("In this section, we take a closer look at different parts of \\autoref{{alg:BB}}. Different speed-up factors by using \\WLP instead of \\LP are given in \\autoref{{tab:factorLB}}. The factor is obtained by dividing the \\LP value with the \\WLP value. Only instances with both configurations solved are recorded. \\WLP are on average {res1} times faster than \\LP with significant differences among the problem classes, \\eg for problem class UFLP, \\WLP is on average {res2} times faster while for class ILP the speed-up is {res3}.
                 
-Most of the CPU time ({res4a}\\% for \\LP and {res4b}\\% for \\WLP) is used on calculating the lower bound set (\\autoref{{alg:benson}}) and the speed-up is mainly due to a reduction in the number of times the LP solver has to be called on \\autoref{{l:checkV}} in \\autoref{{alg:benson}}. This can be seen in \\autoref{{tab:factorLB}}. For example, for UFLP \\WLP is {res2} times faster and solved {res5} times less LPs on average than \\LP. However, when using \\WLP the initial outer approximation has to be copied from the father node into the child node and managing the polyhedron is harder since we have to check for redundant half-spaces in \\autoref{{alg:updateP}} (lines \\ref{{l:sRemoveH}}-\\ref{{l:eRemoveH}}). As a result we have a smaller reduction in CPU times compared to the reduction in tree size.",
+Most of the CPU time ({res4a}\\% for \\LP and {res4b}\\% for \\WLP) is used on calculating the lower bound set (\\autoref{{alg:benson}}) and the speed-up is mainly due to a reduction in the number of times the linear programming solver has to be called on \\autoref{{l:checkV}} in \\autoref{{alg:benson}}. This can be seen in \\autoref{{tab:factorLB}}. For example, for UFLP \\WLP is {res2} times faster and solved {res5} times less linear programs on average than \\LP. However, when using \\WLP the initial outer approximation has to be copied from the father node into the child node and managing the polyhedron is harder since we have to check for redundant half-spaces in \\autoref{{alg:updateP}} (lines \\ref{{l:sRemoveH}}-\\ref{{l:eRemoveH}}). As a result we have a smaller reduction in CPU times than the reduction in number of LPs solved.",
   res1 = round(mean(dat$avgSpeedup), 2),
   res2 = round(dat %>% filter(class == "UFLP") %>% pull(avgSpeedup) %>% mean(), 2),
   res3 = round(dat %>% filter(class == "ILP") %>% pull(avgSpeedup) %>% mean(), 2),
@@ -835,12 +900,17 @@ dat %>% group_by(p, class, configLB) %>% summarise()
 
 
 ```{r parts benson fig}
+datResult %>%
+  filter(configValSplit %in% c("mofv", "binary"), solved == 1) %>%
+  group_by(p, class, configLB) %>% 
+  summarise(across(starts_with("cpu"), mean)) 
+
 dat <- datResult %>%
   filter(configValSplit %in% c("mofv", "binary"), solved == 1) %>%
   mutate(
     pctCplex = 100 * cpuCplex / cpuLbComputation ,
     pctUpdatePolyhedron = 100 * cpuUpdatePolyhedron / cpuLbComputation ,
-    pctInitialization = 100 * cpuInitialization / cpuLbComputation,
+    pctInitialization = 100 * (cpuInitialization + cpuLbCopy) / cpuLbComputation,
     pctOther = 100 - pctCplex - pctUpdatePolyhedron - pctInitialization
   ) %>% 
   group_by(p, class, configLB) %>%
@@ -895,64 +965,73 @@ if (copyTabFigs) {
 
 dat <- datLBStat %>% 
   # filter(configLB == "WLP") %>% 
-  group_by(class, configLB, configValSplit, depth, p) %>% 
+  group_by(class, configLB, configValSplit, depth, p, n) %>% 
   summarise(avgFacetsLB = mean(avgFacetsNoRay), 
             avgFacetsWRays = mean(avgFacet - avgFacetsNoRay), 
             avgVertices = mean(avgVtxNoRay),
             avgVerticesFacetsLB = mean(if_else(avgFacetsNoRay == 0, 0, avgVtxNoRay/avgFacetsNoRay)),
             pct = mean(avgFeasVtx/avgVertex)  # proportion of old vertices and rays in the polyhederon
-        ) 
+        ) %>% 
+  mutate(p = str_c("$p = ", p, "$"))  
   
-dat %>%  
-  select(-avgVerticesFacetsLB, -pct) %>% 
-  pivot_longer(cols = starts_with("avg")) %>% 
-  ggplot(aes(x = depth, y = value, color = name, linetype = configLB)) +
-  geom_line() +
-  facet_grid(rows = vars(class, configValSplit), cols = vars(p), scales = "free")
-  # facet_wrap(vars(class, configValSplit, p), scales = "free")
+# dat %>%  
+#   select(-avgVerticesFacetsLB, -pct) %>% 
+#   pivot_longer(cols = starts_with("avg")) %>% 
+#   ggplot(aes(x = depth, y = value, color = name, linetype = configLB)) +
+#   geom_line() +
+#   facet_grid(rows = vars(class, configValSplit), cols = vars(p), scales = "free")
+#   # facet_wrap(vars(class, configValSplit, p), scales = "free")
 
-dat %>%  
-  select(class, configLB, configValSplit, depth, p, avgVerticesFacetsLB) %>% 
-  pivot_longer(cols = starts_with("avg")) %>% 
-  ggplot(aes(x = depth, y = value, color = name, linetype = configLB)) +
-  geom_line() +
-  facet_grid(rows = vars(class, configValSplit), cols = vars(p), scales = "free")
+# dat %>%  
+#   select(class, configLB, configValSplit, depth, p, avgVerticesFacetsLB) %>% 
+#   pivot_longer(cols = starts_with("avg")) %>% 
+#   ggplot(aes(x = depth, y = value, color = name, linetype = configLB)) +
+#   geom_line() +
+#   facet_grid(rows = vars(class, configValSplit), cols = vars(p), scales = "free")
 
 p1 <- dat %>%  
   filter(configValSplit == "MOFVREVISITED2", configLB == "WLP") %>% 
-  select(-avgVerticesFacetsLB) %>% 
-  pivot_longer(cols = starts_with("avg")) %>% 
-  ggplot(aes(x = depth, y = value, color = name)) +
-  geom_line() +
-  facet_grid(cols = vars(class), rows = vars(p), scales = "free") +
-  labs(color = "", linetype = "") +
-  # scale_color_ob + #scale_linetype_nodesel_varsel +
-  xlab("branching tree depth") + ylab("") +
-  scale_color_manual(values = setNames(scale_colour_discrete()$palette(n=3), c("avgFacetsLB", "avgFacetsWRays", "avgVertices")), 
-                     labels = c("Facets in $\\mathcal{Y}_{N}^{LP}(\\eta)$", "Facets with rays in $\\mathcal{P}_{\\geqq}^{LP}(\\eta)$", "Vertices in $\\mathcal{Y}_{N}^{LP}(\\eta)$")) +
-  theme_publish() 
-p1
-
-p2 <- dat %>%  
-  filter(configValSplit == "MOFVREVISITED2", configLB == "WLP") %>% 
-  select(-avgVerticesFacetsLB) %>% 
+  select(-avgVerticesFacetsLB, -pct) %>% 
   pivot_longer(cols = starts_with("avg")) %>% 
   mutate(name = case_when(
     name == "avgFacetsLB" ~ "Facets in $\\mathcal{Y}_{N}^{LP}(\\eta)$",
-    name == "avgFacetsWRays" ~ "Facets with rays in $\\mathcal{P}_{\\geqq}^{LP}(\\eta)$", 
-    name == "avgVertices" ~ "Vertices in $\\mathcal{Y}_{N}^{LP}(\\eta)$",
-    TRUE ~ "error"
-  )) %>% 
-  ggplot(aes(x = depth, y = value, color = class)) +
+    name == "avgFacetsWRays" ~ "Facets with rays in $\\mathcal{P}_{\\geqq}^{LP}(\\eta)$",
+    name == "avgVertices"~ "Vertices in $\\mathcal{Y}_{N}^{LP}(\\eta)$",
+    TRUE ~ "error")) %>% 
+  ggplot(aes(x = depth, y = value, linetype = p, color = factor(n))) +
   geom_line() +
-  facet_grid(cols = vars(name), rows = vars(p), scales = "free") +
-  labs(color = "", linetype = "") +
+  #geom_smooth(se = F) +
+  facet_wrap(vars(name, class), ncol = 4, scales = "free") +
+  labs(color = "$n$", linetype = "") +
+  guides(color = guide_legend(nrow = 2)) +
   # scale_color_ob + #scale_linetype_nodesel_varsel +
   xlab("branching tree depth") + ylab("") +
-  #scale_color_manual(values = setNames(scale_colour_discrete()$palette(n=4), c("avgFacetsLB", "avgFacetsWRays", "avgVertices")), 
-                     #labels = c("Facets in $\\mathcal{Y}_{N}^{LP}(\\eta)$", "Facets with rays in $\\mathcal{P}_{\\geqq}^{LP}(\\eta)$", "Vertices in $\\mathcal{Y}_{N}^{LP}(\\eta)$")) +
+  scale_color_manual(values = wes_palette(14, name = "Royal1", type = "continuous")) +
+  # scale_color_manual(values = setNames(scale_colour_discrete()$palette(n=3), c("avgFacetsLB", "avgFacetsWRays", "avgVertices")), 
+  #                    labels = c("Facets in $\\mathcal{Y}_{N}^{LP}(\\eta)$", "Facets with rays in $\\mathcal{P}_{\\geqq}^{LP}(\\eta)$", "Vertices in $\\mathcal{Y}_{N}^{LP}(\\eta)$")) +
   theme_publish() 
-p2
+p1
+
+# p2 <- dat %>%  
+#   filter(configValSplit == "MOFVREVISITED2", configLB == "WLP") %>% 
+#   select(-avgVerticesFacetsLB) %>% 
+#   pivot_longer(cols = starts_with("avg")) %>% 
+#   mutate(name = case_when(
+#     name == "avgFacetsLB" ~ "Facets in $\\mathcal{Y}_{N}^{LP}(\\eta)$",
+#     name == "avgFacetsWRays" ~ "Facets with rays in $\\mathcal{P}_{\\geqq}^{LP}(\\eta)$", 
+#     name == "avgVertices" ~ "Vertices in $\\mathcal{Y}_{N}^{LP}(\\eta)$",
+#     TRUE ~ "error"
+#   )) %>% 
+#   ggplot(aes(x = depth, y = value, color = class)) +
+#   geom_line() +
+#   facet_grid(cols = vars(name), rows = vars(p), scales = "free") +
+#   labs(color = "", linetype = "") +
+#   # scale_color_ob + #scale_linetype_nodesel_varsel +
+#   xlab("branching tree depth") + ylab("") +
+#   #scale_color_manual(values = setNames(scale_colour_discrete()$palette(n=4), c("avgFacetsLB", "avgFacetsWRays", "avgVertices")), 
+#                      #labels = c("Facets in $\\mathcal{Y}_{N}^{LP}(\\eta)$", "Facets with rays in $\\mathcal{P}_{\\geqq}^{LP}(\\eta)$", "Vertices in $\\mathcal{Y}_{N}^{LP}(\\eta)$")) +
+#   theme_publish() 
+# p2
 
 
 options(tikzMetricPackages = c(
@@ -961,33 +1040,33 @@ options(tikzMetricPackages = c(
   "\\usetikzlibrary{calc}",
   "\\usepackage{amssymb}"))
 if (copyTabFigs) {
-  tikz(file = here(pathOverLeaf, "fig_lb.tex"), standAlone=F, width = 7, height = 5)
+  tikz(file = here(pathOverLeaf, "fig_lb.tex"), standAlone=F, width = 8, height = 6)
   print(p1)
   dev.off()
 }
 
-p2 <- dat %>% ungroup() %>% 
-  filter(configValSplit == "MOFVREVISITED2", configLB == "WLP") %>% 
-  select(class, depth, p, pct) %>% 
-  ggplot(aes(x = depth, y = pct, color = factor(p))) +
-  geom_line() +
-  # geom_point() +
-  facet_grid(rows = vars(class)) +
-  theme_publish() 
-p2
-if (copyTabFigs) {
-  tikz(file = here(pathOverLeaf, "fig_lb_pct.tex"), standAlone=F, width = 7, height = 4)
-  print(p2)
-  dev.off()
-}
-
-dat %>%  
-  filter(configValSplit == "MOFVREVISITED2", configLB == "WLP") %>% 
-  select(class, configLB, configValSplit, depth, p, avgVerticesFacetsLB) %>% 
-  pivot_longer(cols = starts_with("avg")) %>% 
-  ggplot(aes(x = depth, y = value, color = name, linetype = configLB)) +
-  geom_line() +
-  facet_grid(rows = vars(class), cols = vars(p), scales = "free")
+# p2 <- dat %>% ungroup() %>% 
+#   filter(configValSplit == "MOFVREVISITED2", configLB == "WLP") %>% 
+#   select(class, depth, p, pct) %>% 
+#   ggplot(aes(x = depth, y = pct, color = factor(p))) +
+#   geom_line() +
+#   # geom_point() +
+#   facet_grid(rows = vars(class)) +
+#   theme_publish() 
+# p2
+# if (copyTabFigs) {
+#   tikz(file = here(pathOverLeaf, "fig_lb_pct.tex"), standAlone=F, width = 7, height = 4)
+#   print(p2)
+#   dev.off()
+# }
+# 
+# dat %>%  
+#   filter(configValSplit == "MOFVREVISITED2", configLB == "WLP") %>% 
+#   select(class, configLB, configValSplit, depth, p, avgVerticesFacetsLB) %>% 
+#   pivot_longer(cols = starts_with("avg")) %>% 
+#   ggplot(aes(x = depth, y = value, color = name, linetype = configLB)) +
+#   geom_line() +
+#   facet_grid(rows = vars(class), cols = vars(p), scales = "free")
 ```
 
 
@@ -996,7 +1075,7 @@ dat %>%
 ```{r}
 datResult %>% 
   filter(solved == 1, configLB == "WLP") %>% 
-    mutate(pct = mean(lastNDCpu/cpuTotal)) %>%  view() %>% 
+    mutate(pct = mean(lastNDCpu/cpuTotal)) %>% 
   # group_by(class, p, n, configLB, configValSplit) %>% 
   # summarize(pct = mean(lastNDCpu/cpuTotal)) %>% 
   ggplot(aes(x = n, y = pct, color = configValSplit)) + 
@@ -1011,15 +1090,24 @@ datResult %>%
 ```{r}
 dat <- datResultSolvedI %>% 
   filter(configValSplit %in% c("mofv", "binary"), configLB == "WLP") %>% 
-  bind_rows(datUBStart) 
+  bind_rows(datUBStart) %>% 
+  mutate(alg_config = if_else(str_detect(alg_config, "UB"), "\\texttt{\\small WLP-UB}", "\\texttt{\\small WLP}")) %>% 
+  mutate(p = str_c("$p = ", p, "$")) %>% 
+  group_by(instance_name) %>% 
+  filter(setequal(alg_config, c("\\texttt{\\small WLP-UB}", "\\texttt{\\small WLP}")))   # only instances with results for for all alg
 p <- ggplot(dat, aes(x = n, y = cpuTotal, color = alg_config)) +
   geom_point(size = 0.5) +
   geom_smooth(se = F, size = 0.75) +
-  facet_grid(rows = vars(class), cols = vars(p), scales = "free") + 
+  facet_grid(cols = vars(class), rows = vars(p), scales = "free") + 
   xlab("Variable size ($n$)") + ylab("CPU (seconds)") +
   labs(color = "", linetype = "", alpha = "") +
   theme_publish() 
 p
+if (copyTabFigs) {
+  tikz(file = here(pathOverLeaf, "fig_ub_leaf.tex"), standAlone=F, width = 8, height = 4)
+  print(p)
+  dev.off()
+}
 ```
 
 
@@ -1030,20 +1118,20 @@ dat <- datResult %>%
   filter(configValSplit %in% c("mofv", "binary"), configLB == "WLP") %>% 
   bind_rows(datOSS) %>% 
   group_by(instance_name) %>% 
-  filter(n() == 2) %>% 
-  mutate(alg_config = str_remove_all(alg_config, "\\\\")) %>% print() 
-
+  filter(n() == 2) %>%   # results for both algorithms
+  mutate(alg_config = if_else(str_detect(alg_config, "OSS"), "\\texttt{\\small OSS}", "\\texttt{\\small WLP}")) %>% 
+  mutate(p = str_c("$p = ", p, "$")) 
 p <- ggplot(dat, aes(x = n, y = cpuTotal, color = alg_config)) +
   geom_point(size = 0.5) +
   geom_smooth(se = F, size = 0.75) +
-  facet_grid(rows = vars(class), cols = vars(p), scales = "free") + 
+  facet_grid(cols = vars(class), rows = vars(p), scales = "free") + 
   xlab("Variable size ($n$)") + ylab("CPU (seconds)") +
   labs(color = "", linetype = "", alpha = "") +
   theme_publish() 
 p
 
 if (copyTabFigs) {
-  tikz(file = here(pathOverLeaf, "fig_oss.tex"), standAlone=F, width = 7, height = 6)
+  tikz(file = here(pathOverLeaf, "fig_oss.tex"), standAlone=F, width = 7, height = 4)
   print(p)
   dev.off()
 }
@@ -1084,7 +1172,7 @@ if (copyTabFigs) {
 ## Pruneing 
 
 ```{r}
-p <- datResult %>%
+p <- datResult %>% 
   filter(solved == 1, configLB == "WLP", configValSplit %in% c("mofv", "binary")) %>%
   mutate(
     nbLeaf = nbFathomedInfeas + nbFathomedOptimality + nbFathomedDominance,
@@ -1094,6 +1182,9 @@ p <- datResult %>%
   ) %>%
   group_by(p, class) %>%
   summarise(across(starts_with("pct"), mean)) %>% 
+  rename(infeasibility = pctFathomedInfeas, 
+         optimality = pctFathomedOptimality, 
+         dominance = pctFathomedDominance) %>% 
   pivot_longer(!c(class, p) , names_to = "part" , values_to = "pctCpu") %>%
   mutate(pctCpu = 100 * pctCpu) %>% 
   ggplot(aes(
@@ -1110,7 +1201,6 @@ p <- datResult %>%
   ) +
   facet_grid(
     cols = vars(p),
-    margins = F,
     # scales = "free"
   ) +
   labs(color = "", fill = "") +
@@ -1119,7 +1209,7 @@ p <- datResult %>%
 p
 
 if (copyTabFigs) {
-  tikz(file = here(pathOverLeaf, "fig_leaf.tex"), standAlone=F, width = 7, height = 6)
+  tikz(file = here(pathOverLeaf, "fig_leaf.tex"), standAlone=F, width = 7, height = 4)
   print(p)
   dev.off()
 }
