@@ -52,9 +52,9 @@ library(wesanderson)
 library(ggthemes)
 library(rmarkdown)
 here::i_am(path = "results/paper_tab_fig/fig_tab.Rmd")
-pathOverLeaf <- "/Users/au15463/Dropbox/Apps/Overleaf/LP_relax_based_BB"
+pathOverLeaf <- "/Users/au643334/Dropbox/Apps/Overleaf/LP_relax_based_BB"
 #pathOverLeaf <- here("results", "paper_tab_fig", "latex")    # change to a folder where you want the LaTeX files. The current should work
-copyTabFigs <- FALSE   # copy to Overleaf
+copyTabFigs <- TRUE #FALSE   # copy to Overleaf
 if (isTRUE(getOption('knitr.in.progress'))) copyTabFigs <- TRUE 
 ```
 
