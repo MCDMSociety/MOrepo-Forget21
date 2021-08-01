@@ -125,7 +125,7 @@ scale_linetype_bound <- scale_linetype_manual(values=c("solid", "solid", "dashed
 
 ```{r load data}
 datInput <- read_csv(here("results", "paper_tab_fig", "instances.csv")) %>% 
-  filter(!(class == "KP" & n > 40 & p == 3)) 
+  filter(!(class == "KP" & n > 50 & p == 3)) 
 
 datResult <- read_csv(here("results", "convert", "csv", "resultsMain.csv")) %>%
     mutate(instance_name = str_remove(instance, "....$"))
