@@ -27,7 +27,7 @@ getStat <- function(path) {
   return(dat)
 }
 # getStat(path = "../MOrepo-Kirlik14/instances/fgt/KP/3obj/Kirlik14-KP_p-3_n-100_ins-1.fgt")
-# getStat(path = "instances/fgt/PPP/3obj/Forget21-PPP_10_3_1-100_1-100_1-2500_1_50_random_1_1.fgt")
+# getStat(path = "instances/fgt/PPP/3obj/Forget21-PPP_11_3_1-100_1-100_1-2500_1_50_random_1_1.fgt")
 
 paths <- c(dir_ls("instances/fgt", recurse = T, type = "file"), 
            dir_ls("../MOrepo-Kirlik14/instances/fgt", recurse = T, type = "file"))

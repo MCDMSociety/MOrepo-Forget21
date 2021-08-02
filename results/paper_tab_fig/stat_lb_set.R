@@ -8,7 +8,7 @@ getStat <- function(path) {
   dat <- read_csv(path, col_types = cols())
   return(dat)
 }
-getStat(path = here("results", "convert", "csv", "statFiles", "Depth", "Forget21-PPP_10_3_1-100_1-100_1-2500_1_50_random_10_10_LP_MOFV.txt"))
+getStat(path = here("results", "convert", "csv", "statFiles", "Depth", "Forget21-PPP_11_3_1-100_1-100_1-2500_1_50_random_10_10_LP_MOFVREVISITED2.txt"))
 
 paths <- dir_ls(here("results/convert/csv/statFiles/Depth"), recurse = T, type = "file")
 dat <- tibble(path = paths) %>%

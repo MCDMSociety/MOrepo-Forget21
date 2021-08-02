@@ -472,7 +472,7 @@ str <- str_glue("First, we rank the configurations with respect to the average C
                 
 A plot of the CPU time for each instance is given in \\autoref{{fig:cpu}}. Note the variation in CPU time for the 10 instances given each class and variable size. Warm-starting the computation (\\WLP) in general performs better than \\LP. On average \\WLP (using the best variable selection configuration) performed {res3}\\% faster compared to \\LP. This can also be seen in \\autoref{{fig:performanceProfiles}} illustrating the number of solved instances given a  CPU time limit. We have increased the variable size for each problem class until the size becomes so large that some instances cannot be solved within the time limit. That is, the number of instances solved before the time limit is below 100\\%.
 
-In a few instances \\LP performed best (fastest in {res4}\\% of the instances). We will have a closer look at the reason for this in \\autoref{{sec:resDetails}}",
+In a few instances \\LP performed best (fastest in {res4}\\% of the instances). We will have a closer look at the reason for this in \\autoref{{sec:details}}",
                 res1 = knitr::combine_words(str_c(datIP$alg_config, " (", datIP$pct, "\\%)")),
                 res2 = datComp$pct[2],
                 res3 = dat1$pct[2],
