@@ -22,6 +22,12 @@ dat <- bind_rows(
            alg_config = "\\OSS")
 )
 
+#dat <- read_csv(here("results", "convert", "csv", "resultsMain.csv")) %>% 
+#    mutate(instance_name = str_remove(instance, "....$"),
+#           instance = instance_name,
+#           class = str_replace(instance_name, "^.*?-(.*?)_(.*)", "\\1"),
+#           alg_config = str_c("\\", configLB, "-\\", toupper(configValSplit)))
+
 dat <- dat %>% 
   filter(solved == 1) %>% #filter(instance_name == "Forget21-PPP_11_4_1-100_1-100_1-2500_1_50_random_10_10") %>% 
   select(instance_name, instance, configLB, configValSplit, alg_config) %>% 

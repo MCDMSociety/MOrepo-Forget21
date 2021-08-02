@@ -3,7 +3,7 @@
 library(here)
 
 #### Step 1: Generate instances.csv with statistics for all instances ####
-# source(here("results/paper_tab_fig/stat_instances.R"))
+source(here("results/paper_tab_fig/stat_instances.R"))
 
 #### Step 2: Generate lb_set.csv with statistics about the lower bound sets ####
 source(here("results/paper_tab_fig/stat_lb_set.R"))
