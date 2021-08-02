@@ -53,6 +53,7 @@ library(ggthemes)
 library(rmarkdown)
 here::i_am(path = "results/paper_tab_fig/fig_tab.Rmd")
 pathOverLeaf <- "/Users/au643334/Dropbox/Apps/Overleaf/LP_relax_based_BB"
+pathOverLeaf <- "/Users/au15463/Dropbox/Apps/Overleaf/LP_relax_based_BB"
 #pathOverLeaf <- here("results", "paper_tab_fig", "latex")    # change to a folder where you want the LaTeX files. The current should work
 copyTabFigs <- TRUE #FALSE   # copy to Overleaf
 if (isTRUE(getOption('knitr.in.progress'))) copyTabFigs <- TRUE 
@@ -589,8 +590,9 @@ dat <- datResultAllSolved %>% #filter(instance_name == "Kirlik14-ILP_p-3_n-30_m-
   mutate(p = str_c("$p = ", p, "$"))  
          
 p <- ggplot(aes(x = n, y = nbNodes, color = configValSplit), data = dat) +
-  # geom_point(size = 0.5) +
+  geom_point(size = 0.5) +
   geom_smooth(se = F, size = 0.5) +
+  geom_smooth(se = F, size = 0.5, method = "lm", data = dat %>% filter(class == "ILP", p == "$p = 5$")) +
   facet_grid(rows = vars(class), cols= vars(p), scales = "free") +
   # ggtitle(str_c("Number of instances solved within a given CPU time")) +
   labs(color = "", linetype = "") +
@@ -1003,10 +1005,10 @@ p1 <- dat %>%
   #geom_smooth(se = F) +
   facet_wrap(vars(name, class), ncol = 4, scales = "free") +
   labs(color = "$n$", linetype = "") +
-  guides(color = guide_legend(nrow = 2)) +
+  guides(color = guide_legend(nrow = 3)) +
   # scale_color_ob + #scale_linetype_nodesel_varsel +
   xlab("branching tree depth") + ylab("") +
-  scale_color_manual(values = wes_palette(14, name = "Royal1", type = "continuous")) +
+  scale_color_manual(values = wes_palette(24, name = "Royal1", type = "continuous")) +
   # scale_color_manual(values = setNames(scale_colour_discrete()$palette(n=3), c("avgFacetsLB", "avgFacetsWRays", "avgVertices")), 
   #                    labels = c("Facets in $\\mathcal{Y}_{N}^{LP}(\\eta)$", "Facets with rays in $\\mathcal{P}_{\\geqq}^{LP}(\\eta)$", "Vertices in $\\mathcal{Y}_{N}^{LP}(\\eta)$")) +
   theme_publish() 
@@ -1186,7 +1188,7 @@ dat <- datResult %>%
   filter(configValSplit %in% c("mofv", "binary"), configLB == "WLP") %>% 
   bind_rows(datOSS) %>% 
   group_by(instance_name) %>% 
-  filter(n() == 2) %>%   # results for both algorithms
+  #filter(n() == 2) %>%   # results for both algorithms
   mutate(alg_config = if_else(str_detect(alg_config, "OSS"), "\\texttt{\\small OSS}", "\\texttt{\\small WLP}")) %>% 
   mutate(p = str_c("$p = ", p, "$")) 
 p <- ggplot(dat, aes(x = n, y = cpuTotal, color = alg_config)) +
