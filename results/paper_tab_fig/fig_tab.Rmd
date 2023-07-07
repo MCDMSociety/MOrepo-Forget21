@@ -55,7 +55,7 @@ here::i_am(path = "results/paper_tab_fig/fig_tab.Rmd")
 pathOverLeaf <- "/Users/au643334/Dropbox/Apps/Overleaf/LP_relax_based_BB"
 #pathOverLeaf <- "/Users/au15463/Dropbox/Apps/Overleaf/LP_relax_based_BB"
 #pathOverLeaf <- here("results", "paper_tab_fig", "latex")    # change to a folder where you want the LaTeX files. The current should work
-copyTabFigs <- TRUE #FALSE   # copy to Overleaf
+copyTabFigs <- FALSE   # copy to Overleaf
 if (isTRUE(getOption('knitr.in.progress'))) copyTabFigs <- TRUE 
 ```
 
@@ -1165,16 +1165,18 @@ dat <- datResultSolvedI %>%
   mutate(fct = cpuTotal_WLP/cpuTotal_WLPUB, 
          pct = 100*(cpuTotal_WLP-cpuTotal_WLPUB)/cpuTotal_WLP,
          pctInc = 100*(cpuTotal_WLP-cpuTotal_WLPUB)/cpuTotal_WLPUB,
-         pctNodes = 100*(nbNodes_WLP-nbNodes_WLPUB)/nbNodes_WLPUB) %>% 
+         pctNodes = 100*(nbNodes_WLP-nbNodes_WLPUB)/nbNodes_WLPUB,
+         pctNodesDesc = 100*(nbNodes_WLP-nbNodes_WLPUB)/nbNodes_WLP
+        ) %>% 
   group_by(p, class) %>% 
   summarise(across(where(is.double), mean)) 
 
 str <- str_glue("As can be seen from \\autoref{{fig:ub-leaf}} the reduction in CPU time is significant. On average over all the instances the speed-up factor is {res1} meaning that on average, not providing an optimal solution at the root node, makes the cpu time increase with {res2}\\%.
                 
-As there is no significant computation time involved in generating solutions in our branch-and-bound algorithm (feasible solutions are simply harvested from integer feasible vertices of the lower bound sets), the speed-up must come from the increased pruning potential. The number of nodes in the branching tree on average increase with {res3}\\% for \\WLP. Note also, that in the \\WLPUB configuration, the algorithm still check whether each integer feasible vertex of the lower bound sets found should enter the upper bound set, which underlines the fact that the reduction in computation time comes from the increased pruning potential.",
+As there is no significant computation time involved in generating solutions in our branch-and-bound algorithm (feasible solutions are simply harvested from integer feasible vertices of the lower bound sets), the speed-up must come from the increased pruning potential. The number of nodes in the branching tree on average decrease with {res3}\\% for \\WLPUB. Note also, that in the \\WLPUB configuration, the algorithm still check whether each integer feasible vertex of the lower bound sets found should enter the upper bound set, which underlines the fact that the reduction in computation time comes from the increased pruning potential.",
   res1 = round(mean(dat$fct), 2),
   res2 = round(mean(dat$pctInc)),
-  res3 = round(mean(dat$pctNodes))
+  res3 = round(mean(dat$pctNodesDesc))
 ) 
 save_snippet("snipOptimalityA", str)
 ```
@@ -1284,3 +1286,125 @@ if (copyTabFigs) {
   dev.off()
 }
 ```
+
+
+
+
+```{r, eval=FALSE}
+# testing eps-approx defs
+
+# I am not sure how you normalize e.g. are you assuming the same nadir and ideal point for both the ub and nd set?
+# e.g. if 
+y <- matrix(c(1,4, 3,2), byrow = T, ncol = 2)
+u <- y + 1
+plot(y, col = "blue", xlim=c(0,6), ylim=c(0,6))
+points(u, pch = 2, col = "red")
+# then 
+iY <- c(min(y[,1]), min(y[,2]))
+iY
+dY <- c(max(y[,1]), max(y[,2])) - iY
+dY
+# iU <- c(min(u[,1]), min(u[,2]))
+# dU <- c(max(u[,1]), max(u[,2])) - iU
+Norm <- function(p, d, i, rng = 100) {
+  return(rng *(p-i)/d)
+}
+t(apply(u, 1, Norm, d = dY, i = iY))
+t(apply(y, 1, Norm, d = dY, i = iY))
+
+
+
+# iU <- c(min(u[,1]), min(u[,2]))
+# dU <- c(max(u[,1]), max(u[,2])) - iU
+
+# ranges ideal/nadir
+iY <- c(min(y[,1]), min(y[,2]))
+dY <- c(max(y[,1]), max(y[,2])) - iY
+
+## Using current approach
+# normalize function
+Norm <- function(p, d, i, rng = 100) {
+  return(rng *(p-i)/d)
+}
+epsUY <- function(u,y) {
+  max((u-y)/u, na.rm = T)
+}
+epsY <- function(y, uSet) {
+  min(apply(uSet, 1, function(x) epsUY(x,y)))
+}
+eps <- function(y, u) {
+  iY <- c(min(y[,1]), min(y[,2]))
+  dY <- c(max(y[,1]), max(y[,2])) - iY
+  uB <- t(apply(u, 1, Norm, d = dY, i = iY))
+  yB <- t(apply(y, 1, Norm, d = dY, i = iY))
+  e <- apply(yB, 1, function(x) epsY(x, uB))
+  return(list(eps = max(e), epsAvg = mean(e)))
+} 
+
+## Using the other approach $\bar{y_i} -\epsilon \Delta_i \leqq y_i, \Delta_i = y^N_i-y^I_i$
+epsUYD <- function(u, y, d) {
+  max((u-y)/d)
+}
+epsYD <- function(y, uSet, dY) {
+  min(apply(uSet, 1, function(x) epsUYD(x, y, dY)))
+}
+epsD <- function(y, u) {
+  iY <- c(min(y[,1]), min(y[,2]))
+  dY <- c(max(y[,1]), max(y[,2])) - iY
+  e <- apply(y, 1, function(x) epsYD(x, u, dY))
+  return(list(eps = max(e), epsAvg = mean(e)))
+} 
+
+
+## Testing the different approaches
+y <- matrix(c(1,4, 3,2), byrow = T, ncol = 2)
+u <- y + 1
+eps(y, u)
+epsD(y, u)
+
+u <- matrix(c(2,6, 3,3, 6,2), byrow = T, ncol = 2)
+y <- matrix(c(1,4, 3,2), byrow = T, ncol = 2)
+plot(y, col = "blue", xlim=c(0,6), ylim=c(0,6))
+points(u, pch = 2, col = "red")
+eps(y, u)
+epsD(y, u)
+
+u <- matrix(c(2,6, 3,3, 6,2), byrow = T, ncol = 2)
+y <- matrix(c(2,6, 3,3, 6,2), byrow = T, ncol = 2)
+plot(y, col = "blue", xlim=c(0,6), ylim=c(0,6))
+points(u, pch = 2, col = "red")
+eps(y, u)
+epsD(y, u)
+
+u <- matrix(c(2,6, 4,4, 6,2), byrow = T, ncol = 2)
+y <- matrix(c(2,6, 3,3, 6,2), byrow = T, ncol = 2)
+plot(y, col = "blue", xlim=c(0,6), ylim=c(0,6))
+points(u, pch = 2, col = "red")
+eps(y, u)
+epsD(y, u)
+
+u <- matrix(c(2,6, 4,4, 6,2)+100, byrow = T, ncol = 2)
+y <- matrix(c(2,6, 3,3, 6,2), byrow = T, ncol = 2)
+plot(rbind(y,u), type="n")
+points(u, col = "blue")
+points(y, pch = 2, col = "red")
+eps(y, u)
+epsD(y, u)
+
+u <- matrix(c(2,6, 4,4, 6,2)+1000, byrow = T, ncol = 2)
+y <- matrix(c(2,6, 3,3, 6,2), byrow = T, ncol = 2)
+plot(rbind(y,u), type="n")
+points(u, col = "blue")
+points(y, pch = 2, col = "red")
+eps(y, u)
+epsD(y, u)
+
+u <- matrix(c(2,12, 5,5, 6,2), byrow = T, ncol = 2)
+y <- matrix(c(2,6, 3,3, 6,2), byrow = T, ncol = 2)
+plot(rbind(y,u), type="n")
+points(u, col = "blue")
+points(y, pch = 2, col = "red")
+eps(y, u)
+epsD(y, u)
+```
+

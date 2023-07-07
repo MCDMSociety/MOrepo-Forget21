@@ -1,12 +1,11 @@
 # Multi-objective combinatorial optimization problems
 
-The paper consider instances for tri-objective combinatorial (binary) optimization
-problems. Problem classes considered are PPP (Production Planning) and Uncapacitated Facility Location (UFLP).
+Instances and results for the paper N. Forget, S. L. Gadegaard, and L. R. Nielsen, "Warm-starting lower bound set computations for branch-and-bound algorithms for multi objective integer linear programs", European Journal of Operational Research, vol. 302, no. 3, pp. 909–924, 2022, doi: [10.1016/j.ejor.2022.01.047](https://doi.org/10.1016/j.ejor.2022.01.047). The paper consider instances for tri-objective combinatorial (binary) optimization problems. Problem classes considered are PPP (Production Planning) and Uncapacitated Facility Location (UFLP). An earlier working paper can be seen at [Optimization Online](http://www.optimization-online.org/DB_HTML/2021/08/8531.html).
 
 
 ## Test instances
 
-Instances are named `Forget21_[problemClass]_[n]_[p]_[rangeOfCosts]_[costGenerationMethod]_[constaintId]_[id].raw` where 
+Instances are named `Forget21_[problemClass]_[n]_[p]_[rangeOfCosts]_[costGenerationMethod]_[constaintId]_[id].fgt` where 
 
    - `problemClass` is either PPP (Production Planning Problem), or UFLP (Uncapacitated Facility
       Location Problem).
@@ -19,7 +18,7 @@ Instances are named `Forget21_[problemClass]_[n]_[p]_[rangeOfCosts]_[costGenerat
    - `constaintId`: Same id if constraints are the same.
    - `id`: Instance id running within the constraint id.
 
-### Raw format description 
+### Fgt format description 
 
 All instance files are given in raw format (a text file). An example for a Production Planning Problem is:
 
