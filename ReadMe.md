@@ -1,7 +1,10 @@
 # Multi-objective combinatorial optimization problems
 
-Instances and results for the paper N. Forget, S. L. Gadegaard, and L. R. Nielsen, "Warm-starting lower bound set computations for branch-and-bound algorithms for multi objective integer linear programs", European Journal of Operational Research, vol. 302, no. 3, pp. 909–924, 2022, doi: [10.1016/j.ejor.2022.01.047](https://doi.org/10.1016/j.ejor.2022.01.047). The paper consider instances for tri-objective combinatorial (binary) optimization problems. Problem classes considered are PPP (Production Planning) and Uncapacitated Facility Location (UFLP). An earlier working paper can be seen at [Optimization Online](http://www.optimization-online.org/DB_HTML/2021/08/8531.html).
+Instances and results for the paper N. Forget, S. L. Gadegaard, and L. R. Nielsen, "Linear relaxation based branch-and-bound for multi-objective integer programming with warm-starting", [Optimization Online](http://www.optimization-online.org/DB_HTML/2021/08/8531.html), 2021. The working paper was published as N. Forget, S. L. Gadegaard, and L. R. Nielsen, "Warm-starting lower bound set computations for branch-and-bound algorithms for multi objective integer linear programs", European Journal of Operational Research, vol. 302, no. 3, pp. 909–924, 2022, doi: [10.1016/j.ejor.2022.01.047](https://doi.org/10.1016/j.ejor.2022.01.047). 
 
+The paper consider instances for tri-objective combinatorial (binary) optimization problems. New instances are generated in problem classes considered are PPP (Production Planning) and Uncapacitated Facility Location (UFLP). 
+
+These instances are also used in paper N. Forget, S. L. Gadegaard, K. Klamroth, L. R. Nielsen, and A. Przybylski, "Branch-and-bound and objective branching with three or more objectives", Computers and Operations Research, vol. 148, p. 106012, 2022, doi: [10.1016/j.cor.2022.106012](https://doi.org/10.1016/j.cor.2022.106012).
 
 ## Test instances
 
