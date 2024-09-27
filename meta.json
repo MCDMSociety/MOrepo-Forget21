@@ -4,7 +4,7 @@
    "instanceGroups": [
       {
          "subfolder": "PPP/3obj",
-         "class": "Production planning",
+         "class": "Production Planning",
          "objectives": 3,
          "tags": [ "ppp", "productionPlaningProblem"],
          "format": [ "fgt"],
@@ -13,7 +13,7 @@
       },
       {
          "subfolder": "PPP/4obj",
-         "class": "Production planning",
+         "class": "Production Planning",
          "objectives": 4,
          "tags": [ "ppp", "productionPlaningProblem"],
          "format": [ "fgt"],
